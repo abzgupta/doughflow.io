@@ -1,74 +1,64 @@
-<<<<<<< HEAD
-# Getting Started with Create React App
+# DoughFlow.io - Rental Investment Income Simulator
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+DoughFlow.io is a powerful tool designed to help you run simulations and analyze potential rental investment income. With this application, you can gain valuable insights into the financial performance of your rental properties and make informed investment decisions.
 
-## Available Scripts
+## Disclaimer
 
-In the project directory, you can run:
+Please note that DoughFlow.io is intended for informational and educational purposes only. The simulations and analyses provided by the application should not be considered as financial advice. Always consult with a qualified financial advisor before making any investment decisions. Use DoughFlow.io at your own risk and exercise caution when interpreting the results. The developers and maintainers of DoughFlow.io are not responsible for any financial decisions or outcomes based on the use of this application.
 
-### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Features
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Simulate rental income based on various parameters
+- Analyze cash flow, expenses, and return on investment
+- Compare multiple investment scenarios
+- Visualize financial data through interactive charts and graphs
+- User-friendly interface for easy navigation and input
 
-### `npm test`
+## Getting Started
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+To run DoughFlow.io locally on your machine, follow these steps:
 
-### `npm run build`
+### Prerequisites
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Node.js (version X.X.X or higher)
+- npm (version X.X.X or higher)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Installation
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. Clone the repository:
+git clone https://github.com/abzgupta/doughflow.io.git
 
-### `npm run eject`
+2. Navigate to the project directory:
+cd doughflow.io
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+3. Install the dependencies:
+npm install
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Running the Application
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1. Start the development server:
+npm start
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+2. Open your web browser and visit `http://localhost:3000` to access DoughFlow.io.
 
-## Learn More
+## Contributing
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+We welcome contributions to enhance DoughFlow.io! If you'd like to contribute, please follow these steps:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and commit them with descriptive messages.
+4. Push your changes to your forked repository.
+5. Submit a pull request detailing your changes.
 
-### Code Splitting
+## License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+DoughFlow.io is open-source software licensed under the [MIT License](LICENSE).
 
-### Analyzing the Bundle Size
+## Contact
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+If you have any questions, suggestions, or feedback, please feel free to reach out to us at info@doughflow.io or visit our website at [http://doughflow.io](http://doughflow.io).
 
-### Making a Progressive Web App
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
 
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-=======
-# doughflow.io
->>>>>>> origin/main
