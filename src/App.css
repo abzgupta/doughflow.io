@@ -1,38 +1,228 @@
+/* DoughFlow Financial Flow Simulator Styles */
+
+/* Base App Styles */
 .App {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* ReactFlow overrides */
+.react-flow {
+  background-color: #fafafa;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+.react-flow__node {
+  transition: all 0.2s ease;
+}
+
+.react-flow__node:hover {
+  z-index: 10;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3;
+}
+
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid white;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.3);
+}
+
+/* MiniMap styles */
+.react-flow__minimap {
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+}
+
+/* Controls styles */
+.react-flow__controls {
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__controls-button {
+  border: none;
+  background: white;
+}
+
+.react-flow__controls-button:hover {
+  background: #f5f5f5;
+}
+
+/* Custom node styles */
+.custom-node {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  min-width: 150px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.custom-node:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.custom-node.selected {
+  box-shadow: 0 0 0 2px #1890ff;
+}
+
+/* Toolbar styles */
+.flow-toolbar {
+  background: white;
+  border-right: 1px solid #f0f0f0;
+}
+
+.flow-toolbar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 4px 0;
+  border-radius: 6px;
+  cursor: grab;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.flow-toolbar-item:hover {
+  background-color: #f5f5f5;
+}
+
+.flow-toolbar-item:active {
+  cursor: grabbing;
+}
+
+/* Panel styles */
+.simulation-panel,
+.tax-panel,
+.profile-panel {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Animation for simulation */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.simulating .custom-node {
+  animation: pulse 1s infinite;
+}
+
+/* Flow animation */
+@keyframes flowAnimation {
+  0% {
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  animation: flowAnimation 1s linear infinite;
+}
+
+/* Statistic cards */
+.ant-statistic-title {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.ant-statistic-content {
+  font-size: 18px;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Loading spinner overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+/* Empty state */
+.empty-canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  height: 100%;
+  color: #8c8c8c;
 }
 
-.App-link {
-  color: #61dafb;
+.empty-canvas h3 {
+  margin-top: 16px;
+  color: #595959;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.empty-canvas p {
+  max-width: 400px;
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .ant-layout-sider {
+    width: 280px !important;
+    min-width: 280px !important;
   }
-  to {
-    transform: rotate(360deg);
+}
+
+@media (max-width: 992px) {
+  .flow-toolbar {
+    width: 160px !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .react-flow__controls,
+  .react-flow__minimap,
+  .flow-toolbar {
+    display: none !important;
   }
 }

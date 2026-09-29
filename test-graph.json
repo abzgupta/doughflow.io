@@ -1,0 +1,427 @@
+{
+  "nodes": [
+    {
+      "id": "salary_1",
+      "type": "customNode",
+      "position": { "x": 50, "y": 300 },
+      "data": {
+        "moduleType": "salary",
+        "config": {
+          "name": "Primary Salary",
+          "income_type": "w2",
+          "annual_salary": 120000,
+          "pay_frequency": "monthly",
+          "annual_raise_pct": 3,
+          "federal_withholding_pct": 22,
+          "state_withholding_pct": 6,
+          "pre_tax_401k_pct": 0,
+          "annual_bonus": 10000,
+          "start_month": 1
+        },
+        "label": "Primary Salary"
+      }
+    },
+    {
+      "id": "401k_1",
+      "type": "customNode",
+      "position": { "x": 350, "y": 50 },
+      "data": {
+        "moduleType": "four_oh_one_k",
+        "config": {
+          "name": "401(k)",
+          "account_type": "traditional",
+          "initial_balance": 50000,
+          "expected_annual_return": 7,
+          "employer_match_pct": 100,
+          "employer_match_limit": 6,
+          "vesting_type": "graded",
+          "vesting_years": 4
+        },
+        "label": "401(k)"
+      }
+    },
+    {
+      "id": "checking_1",
+      "type": "customNode",
+      "position": { "x": 350, "y": 300 },
+      "data": {
+        "moduleType": "savings_account",
+        "config": {
+          "name": "Checking Account",
+          "account_type": "checking",
+          "initial_balance": 5000,
+          "apy": 0.5,
+          "compound_frequency": "monthly",
+          "minimum_balance": 0,
+          "target_balance": 0,
+          "low_balance_fee": 0
+        },
+        "label": "Checking Account"
+      }
+    },
+    {
+      "id": "savings_1",
+      "type": "customNode",
+      "position": { "x": 650, "y": 200 },
+      "data": {
+        "moduleType": "savings_account",
+        "config": {
+          "name": "Emergency Fund",
+          "account_type": "emergency_fund",
+          "initial_balance": 15000,
+          "apy": 4.5,
+          "compound_frequency": "monthly",
+          "minimum_balance": 0,
+          "target_balance": 25000,
+          "low_balance_fee": 0
+        },
+        "label": "Emergency Fund"
+      }
+    },
+    {
+      "id": "stocks_1",
+      "type": "customNode",
+      "position": { "x": 650, "y": 350 },
+      "data": {
+        "moduleType": "stock_portfolio",
+        "config": {
+          "name": "Brokerage Account",
+          "initial_value": 25000,
+          "initial_cash": 2000,
+          "expected_annual_return": 8,
+          "dividend_yield": 2,
+          "dividend_reinvest": false,
+          "auto_invest_contributions": true,
+          "expense_ratio": 0.03,
+          "target_cash_reserve": 1000
+        },
+        "label": "Brokerage Account"
+      }
+    },
+    {
+      "id": "rental_1",
+      "type": "customNode",
+      "position": { "x": 50, "y": 500 },
+      "data": {
+        "moduleType": "real_estate",
+        "config": {
+          "property_name": "Rental Property",
+          "purchase_price": 320000,
+          "loan_obj": {
+            "down_payment_pct": 25,
+            "interest_rate_pct": 6.5,
+            "loan_term": 30
+          },
+          "closing_cost": 8000,
+          "income_obj": {
+            "monthly_rent": 2400,
+            "annual_rent_increase": 3,
+            "other_monthly_income": 0,
+            "vacancy_rate_pct": 5,
+            "management_fee": 8
+          },
+          "annual_property_tax": 3800,
+          "annual_total_insurance": 1400,
+          "annual_hoa": 0,
+          "annual_maintenance": 2500,
+          "holding_length": 120,
+          "value_appreciation_per_year_pct": 4,
+          "cost_to_sell_pct": 6
+        },
+        "label": "Rental Property"
+      }
+    },
+    {
+      "id": "primary_home_1",
+      "type": "customNode",
+      "position": { "x": 650, "y": 50 },
+      "data": {
+        "moduleType": "real_estate",
+        "config": {
+          "property_name": "Primary Residence",
+          "purchase_price": 650000,
+          "loan_obj": {
+            "down_payment_pct": 20,
+            "interest_rate_pct": 6.0,
+            "loan_term": 30
+          },
+          "closing_cost": 15000,
+          "income_obj": {
+            "monthly_rent": 0,
+            "annual_rent_increase": 0,
+            "other_monthly_income": 0,
+            "vacancy_rate_pct": 0,
+            "management_fee": 0
+          },
+          "annual_property_tax": 8100,
+          "annual_total_insurance": 2200,
+          "annual_hoa": 1200,
+          "annual_maintenance": 3000,
+          "holding_length": 120,
+          "value_appreciation_per_year_pct": 3,
+          "cost_to_sell_pct": 6
+        },
+        "label": "Primary Residence"
+      }
+    },
+    {
+      "id": "student_loan_1",
+      "type": "customNode",
+      "position": { "x": 650, "y": 500 },
+      "data": {
+        "moduleType": "debt",
+        "config": {
+          "name": "Student Loan",
+          "debt_type": "student_loan",
+          "original_principal": 45000,
+          "current_balance": 32000,
+          "interest_rate_pct": 5.5,
+          "minimum_payment": 450,
+          "loan_term_months": 120,
+          "is_tax_deductible": true,
+          "extra_payment": 100
+        },
+        "label": "Student Loan"
+      }
+    },
+    {
+      "id": "car_loan_1",
+      "type": "customNode",
+      "position": { "x": 350, "y": 500 },
+      "data": {
+        "moduleType": "debt",
+        "config": {
+          "name": "Car Loan",
+          "debt_type": "car_loan",
+          "original_principal": 28000,
+          "current_balance": 18500,
+          "interest_rate_pct": 6.9,
+          "minimum_payment": 520,
+          "loan_term_months": 60,
+          "is_tax_deductible": false,
+          "extra_payment": 0,
+          "start_year": 2024,
+          "start_month": 1,
+          "end_year": 2027,
+          "end_month": 6
+        },
+        "label": "Car Loan"
+      }
+    },
+    {
+      "id": "daycare_1",
+      "type": "customNode",
+      "position": { "x": 650, "y": 650 },
+      "data": {
+        "moduleType": "expense",
+        "config": {
+          "name": "Daycare",
+          "expense_type": "fixed",
+          "category": "childcare",
+          "monthly_amount": 1800,
+          "annual_amount": 0,
+          "annual_increase_pct": 4,
+          "active_months": [],
+          "is_tax_deductible": true,
+          "tax_deduction_type": "childcare_credit",
+          "start_year": 2024,
+          "start_month": 1,
+          "end_year": 2026,
+          "end_month": 8
+        },
+        "label": "Daycare"
+      }
+    },
+    {
+      "id": "summer_camp_1",
+      "type": "customNode",
+      "position": { "x": 350, "y": 650 },
+      "data": {
+        "moduleType": "expense",
+        "config": {
+          "name": "Summer Camp",
+          "expense_type": "seasonal",
+          "category": "childcare",
+          "monthly_amount": 2500,
+          "annual_amount": 0,
+          "annual_increase_pct": 3,
+          "active_months": [6, 7, 8],
+          "is_tax_deductible": true,
+          "tax_deduction_type": "childcare_credit",
+          "start_year": 2024,
+          "start_month": 6,
+          "end_year": 2027,
+          "end_month": 8
+        },
+        "label": "Summer Camp"
+      }
+    },
+    {
+      "id": "utilities_1",
+      "type": "customNode",
+      "position": { "x": 50, "y": 650 },
+      "data": {
+        "moduleType": "expense",
+        "config": {
+          "name": "Utilities",
+          "expense_type": "variable",
+          "category": "utilities",
+          "monthly_amount": 350,
+          "annual_amount": 0,
+          "annual_increase_pct": 3,
+          "active_months": [],
+          "is_tax_deductible": false,
+          "tax_deduction_type": "none"
+        },
+        "label": "Utilities"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_salary_401k",
+      "source": "salary_1",
+      "target": "401k_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 1916.67,
+        "frequency": "monthly",
+        "priority": 1,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_salary_checking",
+      "source": "salary_1",
+      "target": "checking_1",
+      "data": {
+        "flowType": "remainder",
+        "amount": 0,
+        "frequency": "monthly",
+        "priority": 2,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_rental_checking",
+      "source": "rental_1",
+      "target": "checking_1",
+      "data": {
+        "flowType": "remainder",
+        "amount": 0,
+        "frequency": "monthly",
+        "priority": 1,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_savings",
+      "source": "checking_1",
+      "target": "savings_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 1000,
+        "frequency": "monthly",
+        "priority": 1,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_stocks",
+      "source": "checking_1",
+      "target": "stocks_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 500,
+        "frequency": "monthly",
+        "priority": 2,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_mortgage",
+      "source": "checking_1",
+      "target": "primary_home_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 3119,
+        "frequency": "monthly",
+        "priority": 3,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_student_loan",
+      "source": "checking_1",
+      "target": "student_loan_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 550,
+        "frequency": "monthly",
+        "priority": 4,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_car_loan",
+      "source": "checking_1",
+      "target": "car_loan_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 520,
+        "frequency": "monthly",
+        "priority": 5,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_daycare",
+      "source": "checking_1",
+      "target": "daycare_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 1800,
+        "frequency": "monthly",
+        "priority": 6,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_summer_camp",
+      "source": "checking_1",
+      "target": "summer_camp_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 2500,
+        "frequency": "monthly",
+        "priority": 7,
+        "condition": null
+      }
+    },
+    {
+      "id": "edge_checking_utilities",
+      "source": "checking_1",
+      "target": "utilities_1",
+      "data": {
+        "flowType": "fixed",
+        "amount": 350,
+        "frequency": "monthly",
+        "priority": 8,
+        "condition": null
+      }
+    }
+  ],
+  "userProfile": {
+    "filing_status": "married_jointly",
+    "state": "CA",
+    "age": 35,
+    "annual_salary": 120000,
+    "dependents": 2
+  },
+  "simulationConfig": {
+    "start_year": 2024,
+    "start_month": 1,
+    "duration_months": 60
+  },
+  "savedAt": "2026-02-02T00:00:00.000Z"
+}

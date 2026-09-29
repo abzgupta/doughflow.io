@@ -1,437 +1,208 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import PropertyForm from "./PropertyForm";
-import BudgetSankey from "./BudgetSankey";
-import Disclaimer from "./Disclaimer";
-
-import { DollarTwoTone } from "@ant-design/icons";
-
+import React, { useState } from 'react';
+import { Layout, Menu, Button, Space, Dropdown, Modal, Upload, message, Typography } from 'antd';
 import {
-  Button,
-  message,
-  Modal,
-  Form,
-  Input,
-  Row,
-  Col,
-  InputNumber,
-  Statistic,
-  Card,
-  Table,
-} from "antd";
-import CountUp from "react-countup";
-const formatter = (prevValue, currentValue) => (
-  <CountUp start={prevValue} end={currentValue} delay={0} separator="," />
-);
+  NodeIndexOutlined,
+  SaveOutlined,
+  FolderOpenOutlined,
+  FileAddOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
 
-const App = () => {
-  const [properties, setProperties] = useState([]);
-  const [currentMonth, setCurrentMonth] = useState(1);
-  const [isAnimationRunning, setIsAnimationRunning] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [consolidatedMonthlyCashflow, setConsolidatedMonthlyCashflow] =
-    useState([]);
-  const [skipToMonth, setSkipToMonth] = useState(currentMonth);
-  const [prevTotalCashFlow, setPrevTotalCashFlow] = useState(0);
-  const [currentTotalCashFlow, setCurrentTotalCashFlow] = useState(0);
-  const [propertyCards, setPropertyCards] = useState({});
-  const [propertiesToSell, setPropertiesToSell] = useState([]);
-  const [selectedProperty, setSelectedProperty] = useState(null);
+import { GraphProvider } from './context/GraphContext';
+import FlowCanvas from './components/flow/FlowCanvas';
+import SimulationPanel from './components/panels/SimulationPanel';
+import TaxSummaryPanel from './components/panels/TaxSummaryPanel';
+import UserProfilePanel from './components/panels/UserProfilePanel';
+import { useGraphState } from './hooks/useGraphState';
+import { useGraph } from './context/GraphContext';
 
-  const columns = [
-    { title: "Month", dataIndex: "month_number", key: "month_number" },
+// Legacy imports for real estate mode
+import LegacyApp from './LegacyApp';
+
+import 'reactflow/dist/style.css';
+import './App.css';
+
+const { Header, Sider, Content } = Layout;
+const { Title, Text } = Typography;
+
+// Main app content (needs to be inside GraphProvider)
+function AppContent() {
+  const graph = useGraph();
+  const { saveGraph, loadGraphFromFile } = useGraphState();
+
+  const [rightPanel, setRightPanel] = useState('simulation'); // 'simulation' | 'tax' | 'profile'
+  const [loadModalOpen, setLoadModalOpen] = useState(false);
+
+  // Handle save - triggers file download
+  const handleSave = () => {
+    saveGraph();
+    message.success('Graph downloaded as JSON file');
+  };
+
+  // Handle file upload for loading
+  const handleFileUpload = async (file) => {
+    try {
+      await loadGraphFromFile(file);
+      message.success('Graph loaded successfully');
+      setLoadModalOpen(false);
+    } catch (err) {
+      message.error(err.message || 'Failed to load graph');
+    }
+    return false; // Prevent default upload behavior
+  };
+
+  // File menu items
+  const fileMenuItems = [
     {
-      title: "Property Name",
-      dataIndex: "property_name",
-      key: "property_name",
+      key: 'new',
+      icon: <FileAddOutlined />,
+      label: 'New Graph',
+      onClick: () => {
+        if (graph.isDirty) {
+          Modal.confirm({
+            title: 'Unsaved Changes',
+            content: 'You have unsaved changes. Are you sure you want to create a new graph?',
+            onOk: () => graph.clearGraph(),
+          });
+        } else {
+          graph.clearGraph();
+        }
+      },
     },
     {
-      title: "Cumulative Cash For Property",
-      dataIndex: "cumulative_cash_for_property",
-      key: "cumulative_cash_for_property",
-    },
-    { title: "Property Value", dataIndex: "value", key: "value" },
-    {
-      title: "Remaining Loan Amount",
-      dataIndex: "remaining_loan_amount",
-      key: "remaining_loan_amount",
+      key: 'save',
+      icon: <SaveOutlined />,
+      label: 'Save Graph (Download)',
+      onClick: handleSave,
     },
     {
-      title: "If Sold Today",
-      dataIndex: "if_sold_today",
-      key: "if_sold_today",
+      key: 'load',
+      icon: <FolderOpenOutlined />,
+      label: 'Load Graph (Upload)',
+      onClick: () => setLoadModalOpen(true),
     },
   ];
 
-  useEffect(() => {
-    if (properties.length > 0) {
-      callFlaskApi();
+  return (
+    <Layout style={{ height: '100vh' }}>
+      {/* Header */}
+      <Header
+        style={{
+          background: '#fff',
+          padding: '0 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #f0f0f0',
+          height: 48,
+        }}
+      >
+        <Space>
+          <NodeIndexOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+          <Title level={4} style={{ margin: 0 }}>
+            DoughFlow
+          </Title>
+          <Text type="secondary">Financial Flow Simulator</Text>
+        </Space>
+
+        <Space>
+          <Dropdown menu={{ items: fileMenuItems }} placement="bottomRight">
+            <Button icon={<FolderOpenOutlined />}>File</Button>
+          </Dropdown>
+
+          <Button
+            icon={<SaveOutlined />}
+            onClick={handleSave}
+            disabled={!graph.isDirty}
+          >
+            Save
+          </Button>
+        </Space>
+      </Header>
+
+      <Layout>
+        {/* Main Content - Flow Canvas */}
+        <Content style={{ position: 'relative' }}>
+          <FlowCanvas />
+        </Content>
+
+        {/* Right Sidebar - Panels */}
+        <Sider
+          width={320}
+          theme="light"
+          style={{
+            borderLeft: '1px solid #f0f0f0',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Panel Tabs */}
+          <Menu
+            mode="horizontal"
+            selectedKeys={[rightPanel]}
+            onClick={(e) => setRightPanel(e.key)}
+            style={{ borderBottom: '1px solid #f0f0f0' }}
+          >
+            <Menu.Item key="simulation">Simulate</Menu.Item>
+            <Menu.Item key="tax">Tax</Menu.Item>
+            <Menu.Item key="profile">Profile</Menu.Item>
+          </Menu>
+
+          {/* Panel Content */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            {rightPanel === 'simulation' && <SimulationPanel />}
+            {rightPanel === 'tax' && <TaxSummaryPanel />}
+            {rightPanel === 'profile' && <UserProfilePanel />}
+          </div>
+        </Sider>
+      </Layout>
+
+      {/* Load Modal */}
+      <Modal
+        title="Load Graph"
+        open={loadModalOpen}
+        onCancel={() => setLoadModalOpen(false)}
+        footer={null}
+      >
+        <Upload.Dragger
+          accept=".json"
+          beforeUpload={handleFileUpload}
+          showUploadList={false}
+        >
+          <p className="ant-upload-drag-icon">
+            <UploadOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+          </p>
+          <p className="ant-upload-text">Click or drag a JSON file to load</p>
+          <p className="ant-upload-hint">
+            Select a previously saved DoughFlow graph file (.json)
+          </p>
+        </Upload.Dragger>
+      </Modal>
+    </Layout>
+  );
+}
+
+// Main App with mode switch
+function App() {
+  const [mode, setMode] = useState('flow'); // 'flow' | 'legacy'
+
+  // Check URL for mode
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'legacy') {
+      setMode('legacy');
     }
-  }, [properties]);
+  }, []);
 
-  useEffect(() => {
-    const filteredCashflow = consolidatedMonthlyCashflow.filter(
-      (item) => item.month_number === currentMonth
-    );
-
-    const filteredCashflowOverall = consolidatedMonthlyCashflow.filter(
-      (item) =>
-        item.month_number === currentMonth && item.property_name == "Overall"
-    );
-
-    const unsoldProperties = filteredCashflow.filter(
-      (item) => item.is_sold === 0 && item.property_name !== "Overall"
-    );
-    setPropertiesToSell(unsoldProperties);
-
-    console.log(currentMonth, "here", filteredCashflow);
-    let updatedPropertyCards = {};
-    properties.forEach((property) => {
-      const latestRecord = consolidatedMonthlyCashflow.reduce(
-        (latest, item) => {
-          if (
-            item.property_name === property.property_name &&
-            item.month_number <= currentMonth &&
-            item.month_number > (latest ? latest.month_number : 0)
-          ) {
-            return item;
-          }
-          return latest;
-        },
-        null
-      );
-
-      if (latestRecord) {
-        updatedPropertyCards[property.property_name] = {
-          monthly_rent: latestRecord.monthly_rent,
-          cashflow_after_expenses: latestRecord.cash_flow,
-          cumulative_cash_for_property:
-            latestRecord.cumulative_cash_for_property,
-          value: latestRecord.value,
-          remaining_loan_amount: latestRecord.remaining_loan_amount,
-          if_sold_today: latestRecord.if_sold_today,
-          cash_on_cash_return: latestRecord.cash_on_cash_return,
-          cash_on_cash_return_if_sold_today:
-            latestRecord.cash_on_cash_return_if_sold_today,
-        };
-      }
-    });
-
-    if (filteredCashflowOverall.length > 0) {
-      const totalCashFlow =
-        filteredCashflowOverall[0].cumulative_cash_for_property;
-      setPrevTotalCashFlow(currentTotalCashFlow);
-      setCurrentTotalCashFlow(totalCashFlow);
-
-      // Update the propertyCards state
-    }
-    setPropertyCards(updatedPropertyCards);
-  }, [consolidatedMonthlyCashflow, currentMonth]);
-
-  const handleEditProperty = (property) => {
-    const selectedFilteredProperty = properties.filter(
-      (x) => x.property_name == property.property_name
-    );
-    const selectedFilteredPropertyValue = selectedFilteredProperty[0];
-    console.log(selectedFilteredPropertyValue);
-    selectedFilteredPropertyValue.holding_length =
-      selectedFilteredPropertyValue.original_holding_length / 12;
-    setSelectedProperty(selectedFilteredPropertyValue);
-    setIsModalVisible(true);
-  };
-
-  const handleSellProperty = (propertyName) => {
-    const updatedProperties = properties.map((property) => {
-      if (property.property_name === propertyName) {
-        return {
-          ...property,
-          holding_length: currentMonth - property.month_offset,
-          is_sold: true,
-        };
-      }
-      return property;
-    });
-
-    setPropertiesToSell([]);
-    setProperties(updatedProperties);
-  };
-
-  const handleCreate = (values) => {
-    console.log("Received values of form: ", values);
-    const filteredProperties = properties.filter(
-      (x) => x.property_name != values["property_name"]
-    );
-    setProperties([...filteredProperties, values]);
-    setSelectedProperty(null);
-    setIsModalVisible(false);
-  };
-
-  const callFlaskApi = async () => {
-    try {
-      console.log(properties);
-      const response = await axios.post(
-        "https://abzgupta.pythonanywhere.com/get_financial_table_summarized",
-        {
-          property_list: properties,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log(response);
-
-      // Check if the response data is a string
-      if (typeof response.data === "string") {
-        // Parse the string to extract the actual data
-        const parsedData = JSON.parse(response.data);
-        setConsolidatedMonthlyCashflow(parsedData.data);
-      } else {
-        // If the response data is already an array, use it directly
-        setConsolidatedMonthlyCashflow(response.data);
-      }
-    } catch (error) {
-      if (error.response) {
-        console.error("Error calling Flask API:", error.response.data);
-        console.error("Status code:", error.response.status);
-        console.error("Headers:", error.response.headers);
-      } else if (error.request) {
-        console.error("No response received from the server:", error.request);
-      } else {
-        console.error("Error setting up the request:", error.message);
-      }
-    }
-  };
-
-  useEffect(() => {
-    let timer = null;
-    if (isAnimationRunning) {
-      timer = setInterval(() => {
-        setCurrentMonth((prevMonth) => prevMonth + 1);
-      }, 2000); // Adjust the interval duration as needed
-    }
-    return () => clearInterval(timer);
-  }, [isAnimationRunning]);
-
-  const handleStartPauseClick = () => {
-    setIsAnimationRunning((prevState) => !prevState);
-  };
-
-  const handleSkipToMonthChange = (value) => {
-    setSkipToMonth(value);
-  };
-
-  const handleSkipToMonthSubmit = () => {
-    setCurrentMonth(skipToMonth);
-  };
+  if (mode === 'legacy') {
+    return <LegacyApp />;
+  }
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={12}>
-        <Row>
-          <Col span={8} />
-          <Col span={8}>
-            {" "}
-            <Statistic title="Month Number" value={currentMonth} />
-          </Col>
-          <Col span={8} />
-        </Row>
-
-        <Button onClick={handleStartPauseClick}>
-          {isAnimationRunning ? "Pause" : "Start"}
-        </Button>
-        <Button
-          onClick={() => setIsModalVisible(true)}
-          disabled={isAnimationRunning}
-        >
-          Purchase Property
-        </Button>
-        {!isAnimationRunning && (
-          <div style={{ display: "inline-block", marginLeft: "10px" }}>
-            <InputNumber
-              min={0}
-              value={skipToMonth}
-              onChange={handleSkipToMonthChange}
-              style={{ width: "120px" }}
-            />
-            <Button
-              onClick={handleSkipToMonthSubmit}
-              style={{ marginLeft: "10px" }}
-            >
-              Skip to this month
-            </Button>
-          </div>
-        )}
-        <PropertyForm
-          visible={isModalVisible}
-          onCreate={handleCreate}
-          onCancel={() => {
-            setSelectedProperty(null);
-            setIsModalVisible(false);
-          }}
-          currentMonth={currentMonth}
-          initialValues={selectedProperty}
-          propertyCount={properties.length}
-        />
-        {!isAnimationRunning && propertiesToSell.length > 0 && (
-          <div>
-            <h3>Properties to Sell</h3>
-            <ul>
-              {propertiesToSell.map((property) => (
-                <li key={property.property_name}>
-                  {property.property_name}{" "}
-                  <Button
-                    onClick={() => handleSellProperty(property.property_name)}
-                  >
-                    Sell?
-                  </Button>
-                  <Button onClick={() => handleEditProperty(property)}>
-                    Edit Property
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div>
-          <h3>Property Statistics</h3>
-          <Card>
-            <Statistic
-              title="Cashflow"
-              value={currentTotalCashFlow}
-              formatter={() =>
-                formatter(prevTotalCashFlow, currentTotalCashFlow)
-              }
-            />
-          </Card>
-          <Row gutter={[16, 16]}>
-            {Object.entries(propertyCards).map(
-              ([propertyName, propertyStats]) => (
-                <Col key={propertyName} span={6}>
-                  <Card bordered={true}>
-                    <h2>{propertyName}</h2>
-                    <Statistic
-                      title="Monthly Rent"
-                      value={propertyStats.monthly_rent}
-                      formatter={(value) =>
-                        Math.round(value).toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                    <Statistic
-                      title="Monthly Cashflow net Expenses"
-                      value={propertyStats.cashflow_after_expenses}
-                      formatter={(value) =>
-                        Math.round(value).toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                    <Statistic
-                      title="Cumulative Cash"
-                      value={propertyStats.cumulative_cash_for_property}
-                      formatter={(value) =>
-                        Math.round(value).toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                    <Statistic
-                      title="Property Value"
-                      value={propertyStats.value}
-                      formatter={(value) =>
-                        Math.round(value).toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                    <Statistic
-                      title="Remaining Loan Amount"
-                      value={propertyStats.remaining_loan_amount}
-                      formatter={(value) =>
-                        Math.round(value).toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                    <Statistic
-                      title="If Sold Today"
-                      value={propertyStats.if_sold_today}
-                      formatter={(value) =>
-                        Math.round(value).toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                    <Statistic
-                      title="Cash on Cash Return"
-                      value={propertyStats.cash_on_cash_return}
-                      formatter={(value) =>
-                        (value * 100).toLocaleString("en-US", {
-                          style: "decimal",
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }) + "%"
-                      }
-                    />
-                    <Statistic
-                      title="Cash on Cash Return If Sold Today"
-                      value={propertyStats.cash_on_cash_return_if_sold_today}
-                      formatter={(value) =>
-                        (value * 100).toLocaleString("en-US", {
-                          style: "decimal",
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }) + "%"
-                      }
-                    />
-                  </Card>
-                </Col>
-              )
-            )}
-          </Row>
-        </div>
-      </Col>
-      <Col span={12}>
-        <div>
-          <h3>Consolidated Monthly Cashflow</h3>
-          <Table
-            dataSource={consolidatedMonthlyCashflow}
-            columns={columns}
-            pagination={true}
-            rowKey="month_number"
-          />
-        </div>
-      </Col>
-      <Row>
-        <Col span={4}></Col>
-        <Col span={16}>
-          <Disclaimer/>
-        </Col>
-        <Col span={4}></Col>
-      </Row>
-    </Row>
+    <GraphProvider>
+      <AppContent />
+    </GraphProvider>
   );
-};
+}
 
 export default App;
