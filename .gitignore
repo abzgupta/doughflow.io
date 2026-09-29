@@ -12,3 +12,5 @@ backend/ledger.log
 .claude/settings.local.json
 *.mov
 .DS_Store
+__pycache__/
+*.pyc
