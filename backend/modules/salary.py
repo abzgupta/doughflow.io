@@ -235,7 +235,8 @@ class SalaryModule(BaseModule):
         tax_info.tax_deferred_income = contrib_401k
 
         # Update state
-        state.balance = net_pay
+        # Pay not routed onward carries over instead of disappearing
+        state.balance += net_pay
         state.monthly_contribution = net_pay
 
         result.amount_received = 0

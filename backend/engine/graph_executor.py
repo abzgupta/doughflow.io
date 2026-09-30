@@ -300,13 +300,14 @@ class GraphExecutor:
         # Update final balances
         snapshot.node_balances = copy.deepcopy(node_balances)
 
-        # Calculate net worth
+        # Calculate net worth from module balances (debts are negative).
+        # Expense nodes are skipped: their balance is a running total of money
+        # already paid out of other accounts, so counting it would subtract twice.
         net_worth = 0.0
-        for node_id, module in self.nodes.items():
-            state = module.get_state()
-            balance = getattr(state, 'balance', 0) or node_balances.get(node_id, 0)
-            # For debt modules, balance is negative
-            net_worth += balance
+        for module in self.nodes.values():
+            if module.module_type.value == 'expense':
+                continue
+            net_worth += module.get_state().balance
         snapshot.net_worth = net_worth
 
         # Log month end
@@ -338,7 +339,8 @@ class GraphExecutor:
         # Filter out inflows from inactive nodes
         active_inflows = {k: v for k, v in node_inflows.items() if k not in inactive_nodes}
         total_inflow = sum(active_inflows.values())
-        available = node_balances.get(node_id, 0) + total_inflow
+        # Informational for the module: what it will hold once inflows land
+        available = module.get_state().balance + total_inflow
 
         # Get outgoing edges, sorted by priority
         # Filter out edges to inactive nodes
@@ -354,8 +356,8 @@ class GraphExecutor:
             user_profile=self.user_profile
         )
 
-        # Update node balance based on module result
-        new_balance = getattr(result.new_state, 'balance', available)
+        # The module's own state is the source of truth for its balance
+        new_balance = module.get_state().balance
         node_balances[node_id] = new_balance
 
         # Log node processing
@@ -367,14 +369,12 @@ class GraphExecutor:
             events=result.events
         )
 
-        # Store node state
-        snapshot.node_states[node_id] = module.to_dict()
-
         # Add events
         snapshot.events.extend(result.events)
 
-        # Process outgoing flows
-        remaining = available
+        # Process outgoing flows: money leaves the module itself, and the target
+        # receives exactly what the module paid out
+        remaining = new_balance
         for edge in outgoing:
             if not self._should_execute_edge(edge, month, year):
                 continue
@@ -383,10 +383,11 @@ class GraphExecutor:
 
             flow_amount = self._calculate_flow_amount(edge, remaining, node_balances)
             if flow_amount > 0:
+                flow_amount = module.apply_outflow(flow_amount)
                 inflows[edge.target_id][node_id] = flow_amount
                 outflows[node_id] += flow_amount
                 remaining -= flow_amount
-                node_balances[node_id] -= flow_amount
+                node_balances[node_id] = module.get_state().balance
 
                 # Log the flow
                 ledger.log_flow(node_id, edge.target_id, flow_amount, edge.flow_type)
@@ -396,6 +397,9 @@ class GraphExecutor:
                     'target': edge.target_id,
                     'amount': flow_amount
                 })
+
+        # Store node state after outflows so it matches node_balances
+        snapshot.node_states[node_id] = module.to_dict()
 
         # Aggregate tax info
         if result.tax_info:

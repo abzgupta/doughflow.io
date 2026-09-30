@@ -330,8 +330,10 @@ Provides:
 
 Open bugs are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.io/issues).
 
-- Modules handle their OWN internal state (inflows, growth, interest)
-- The executor handles OUTFLOWS via edges (subtracts from node_balances)
+- Each module's state is the single source of truth for its balance. Modules apply their own inflows, growth, and interest in `process_month`
+- The executor sends money out along edges by calling `module.apply_outflow(amount)`, and the target receives exactly what was paid out. Modules with sub-accounts override it (stocks use cash and then sell shares; the 401(k), IRA, and 529 use their withdrawal logic)
+- `node_balances` in snapshots mirrors module balances after outflows
+- Net worth is the sum of module balances, skipping expense nodes: their balance is a running total of money already paid out of other accounts
 - `available_for_outflow` is informational capacity, NOT a withdrawal request
 - GraphContext's `setNodes`/`setEdges` do NOT support functional updates (no `prevState =>` pattern)
 - After manual transactions, there are TWO sources of truth: snapshots (historical) and nodeStates (modified)
@@ -434,7 +436,7 @@ Downloaded as `doughflow-YYYY-MM-DD.json`
 
 1. **Run uvicorn with `--reload`** so Python changes are picked up
 2. **Check ledger.log** for debugging simulation issues
-3. **Module state vs node_balances**: Modules track internal state, executor tracks balances for flows
+3. **Balances**: Module state is the source of truth; `backend/tests/test_conservation.py` checks that flows never create or destroy money
 4. **Inactive nodes**: Check `is_active_for_date()` and `snapshot.inactive_nodes`
 5. **Flow priority**: Lower number = processed first
 6. **Cycles**: Handled via iterative convergence in `_resolve_cycle_rank()`

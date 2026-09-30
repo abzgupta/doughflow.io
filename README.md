@@ -111,7 +111,6 @@ pytest
 
 The simulation engine has bugs that affect the numbers. The big ones:
 
-- Money moved between accounts can be double-counted, which inflates net worth
 - Graphs with cycles can apply a month's interest and flows more than once
 - Net worth doesn't include property equity
 - Taxes are estimated separately and aren't deducted inside the simulation

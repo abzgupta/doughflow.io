@@ -182,6 +182,10 @@ class FiveTwentyNineModule(BaseModule):
         self._state = state
         return result
 
+    def apply_outflow(self, amount: float) -> float:
+        # Money leaving a 529 along an edge is assumed to pay education costs
+        return self.distribute(amount, qualified=True)['amount']
+
     def distribute(self, amount: float, qualified: bool) -> Dict[str, Any]:
         """
         Process a distribution from the 529.

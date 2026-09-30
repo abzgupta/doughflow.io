@@ -275,6 +275,10 @@ class IRAModule(BaseModule):
             'is_backdoor': self.config['is_backdoor']
         }
 
+    def apply_outflow(self, amount: float) -> float:
+        # Taxes and penalties on withdrawals aren't applied in the simulation yet (#9)
+        return self.withdraw(amount, {})['amount']
+
     def withdraw(self, amount: float, user_profile: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process a withdrawal from the IRA.

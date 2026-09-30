@@ -175,6 +175,18 @@ class BaseModule(ABC):
         """Set module state (used for loading saved simulations)"""
         self._state = state
 
+    def apply_outflow(self, amount: float) -> float:
+        """
+        Remove money sent out along an edge. Called by the executor after
+        process_month, so the module's balance stays the single source of truth.
+
+        Returns the amount actually removed, which is what the target receives.
+        Modules that hold money in sub-accounts (shares, vested balances)
+        override this.
+        """
+        self._state.balance -= amount
+        return amount
+
     def is_active_for_date(self, year: int, month: int) -> bool:
         """
         Check if this module is active for the given year/month.
