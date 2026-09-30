@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Layout, Menu, Button, Space, Dropdown, Modal, Upload, message, Typography } from 'antd';
+import { Layout, Menu, Button, Space, Dropdown, Modal, Upload, message, Typography, Alert } from 'antd';
 import {
   NodeIndexOutlined,
   SaveOutlined,
@@ -17,6 +17,7 @@ import UserProfilePanel from './components/panels/UserProfilePanel';
 import { useGraphState } from './hooks/useGraphState';
 import { useGraph } from './context/GraphContext';
 import sampleGraph from './examples/sampleGraph.json';
+import Disclaimer from './Disclaimer';
 
 // Legacy imports for real estate mode
 import LegacyApp from './LegacyApp';
@@ -34,6 +35,7 @@ function AppContent() {
 
   const [rightPanel, setRightPanel] = useState('simulation'); // 'simulation' | 'tax' | 'profile'
   const [loadModalOpen, setLoadModalOpen] = useState(false);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   // Bumping runToken runs the simulation once after the next render, so it
   // sees freshly loaded nodes. The ref keeps StrictMode from running it twice.
@@ -158,6 +160,22 @@ function AppContent() {
         </Space>
       </Header>
 
+      {/* Always-visible disclaimer */}
+      <Alert
+        type="warning"
+        banner
+        showIcon
+        message={
+          <span>
+            Educational tool only, not financial or tax advice. Numbers may be wrong. Consult a
+            financial advisor and tax professional before making decisions.{' '}
+            <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setDisclaimerOpen(true)}>
+              Full disclaimer
+            </Button>
+          </span>
+        }
+      />
+
       <Layout>
         {/* Main Content - Flow Canvas */}
         <Content style={{ position: 'relative' }}>
@@ -194,6 +212,16 @@ function AppContent() {
           </div>
         </Sider>
       </Layout>
+
+      {/* Disclaimer Modal */}
+      <Modal
+        open={disclaimerOpen}
+        onCancel={() => setDisclaimerOpen(false)}
+        footer={null}
+        width={640}
+      >
+        <Disclaimer />
+      </Modal>
 
       {/* Load Modal */}
       <Modal

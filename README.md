@@ -125,8 +125,19 @@ Bug reports, fixes, and new modules are all welcome. See [CONTRIBUTING.md](CONTR
 
 ## Disclaimer
 
-DoughFlow is for informational and educational purposes only and is not financial,
-tax, or investment advice. Consult a qualified professional before making financial decisions.
+**DoughFlow is an educational tool. It is not financial, investment, tax, or legal advice.**
+
+- The simulations are simplified models built on hypothetical assumptions. They may contain
+  errors (see [Known issues](#known-issues)) and will not match real-world outcomes.
+- Tax calculations are rough estimates. Tax rules are simplified and may be out of date or
+  wrong for your situation.
+- Before making any financial decision, consult a qualified **financial advisor**, a
+  **tax advisor or CPA**, and where relevant an **attorney**, who can account for your
+  specific circumstances.
+- You use DoughFlow entirely at your own risk. You are solely responsible for any decisions
+  you make. The authors and contributors accept no liability for any financial loss or other
+  damages arising from use of the software or reliance on its output. See also the
+  warranty disclaimer and limitation of liability in the [MIT License](LICENSE).
 
 ## License
 
