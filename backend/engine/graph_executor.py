@@ -300,14 +300,13 @@ class GraphExecutor:
         # Update final balances
         snapshot.node_balances = copy.deepcopy(node_balances)
 
-        # Calculate net worth from module balances (debts are negative).
-        # Expense nodes are skipped: their balance is a running total of money
-        # already paid out of other accounts, so counting it would subtract twice.
+        # Calculate net worth from each module's contribution: usually its
+        # balance (debts are negative). Expense nodes contribute 0 (their
+        # balance is money already paid out of other accounts) and properties
+        # add their equity. See BaseModule.net_worth_contribution.
         net_worth = 0.0
         for module in self.nodes.values():
-            if module.module_type.value == 'expense':
-                continue
-            net_worth += module.get_state().balance
+            net_worth += module.net_worth_contribution()
         snapshot.net_worth = net_worth
 
         # Log month end

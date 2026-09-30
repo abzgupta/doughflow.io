@@ -233,6 +233,14 @@ class ExpenseModule(BaseModule):
         self._state = state
         return result
 
+    def net_worth_contribution(self) -> float:
+        """
+        Expenses don't count toward net worth: the balance is a running total
+        of money already paid out of other accounts, so counting it would
+        subtract twice.
+        """
+        return 0.0
+
     def get_annual_summary(self, year: int) -> Dict[str, Any]:
         state = self._state if isinstance(self._state, ExpenseState) else ExpenseState()
         return {

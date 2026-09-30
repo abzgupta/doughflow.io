@@ -322,6 +322,16 @@ class RealEstateModule(BaseModule):
         self._state = state
         return result
 
+    def net_worth_contribution(self) -> float:
+        """
+        Cash side (balance) plus equity (value minus loan) while owned.
+        Once sold, equity is 0: the sale proceeds are already in balance.
+        """
+        state = self._state
+        if not isinstance(state, RealEstateState) or state.is_sold:
+            return state.balance
+        return state.balance + state.current_value - state.remaining_loan
+
     def get_annual_summary(self, year: int) -> Dict[str, Any]:
         """Get annual summary for tax reporting"""
         state = self._state if isinstance(self._state, RealEstateState) else RealEstateState()

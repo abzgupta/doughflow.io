@@ -1,4 +1,6 @@
-"""Tests for the real estate module's monthly cash flow and sale."""
+"""Tests for the real estate module's monthly cash flow, sale, and equity."""
+
+import pytest
 
 from modules.real_estate import RealEstateModule
 
@@ -72,3 +74,63 @@ def test_property_sells_only_once():
     # Nothing changes after the sale
     run_month(module)
     assert module.get_state().balance == balance_at_sale
+
+
+def financed_property(**overrides):
+    """20% down on a 30-year loan at 7%, with closing and repair costs"""
+    config = {
+        'closing_cost': 5000,
+        'repairs_obj': {'repair_cost': 3000, 'value_after_repair': 0},
+        'loan_obj': {'down_payment_pct': 20, 'interest_rate_pct': 7, 'loan_term': 30},
+    }
+    config.update(overrides)
+    return make_property(**config)
+
+
+def equity(module):
+    return module.net_worth_contribution() - module.get_state().balance
+
+
+def test_net_worth_at_purchase_is_only_closing_and_repairs():
+    module = financed_property()
+    # The cash side still shows everything paid at purchase
+    assert module.get_state().balance == -(40000 + 5000 + 3000)
+    # But the down payment becomes equity, so only closing and repairs are lost
+    assert module.net_worth_contribution() == -(5000 + 3000)
+
+
+def test_all_cash_purchase_does_not_change_net_worth():
+    assert make_property().net_worth_contribution() == 0
+
+
+def test_equity_grows_with_loan_paydown_and_appreciation():
+    module = financed_property(value_appreciation_per_year_pct=3)
+    assert equity(module) == 200000 - 160000
+
+    for _ in range(12):
+        run_month(module)
+    state = module.get_state()
+
+    assert state.remaining_loan < 160000
+    assert state.current_value == pytest.approx(200000 * 1.03)
+    assert equity(module) == pytest.approx(state.current_value - state.remaining_loan)
+    # $6,000 of appreciation plus a year of principal paid down
+    assert equity(module) > 40000 + 6000
+
+
+def test_sale_does_not_double_count_equity():
+    sold = financed_property(holding_length=12, cost_to_sell_pct=0)
+    held = financed_property(holding_length=120, cost_to_sell_pct=0)
+    for _ in range(12):
+        run_month(sold)
+        run_month(held)
+
+    assert sold.get_state().is_sold
+    assert equity(sold) == 0
+    # Selling at value with no costs just turns equity into cash
+    assert sold.net_worth_contribution() == pytest.approx(held.net_worth_contribution())
+    assert sold.get_state().balance == pytest.approx(held.net_worth_contribution())
+
+    # Nothing is counted again after the sale
+    run_month(sold)
+    assert equity(sold) == 0

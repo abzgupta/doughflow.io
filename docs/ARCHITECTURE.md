@@ -333,7 +333,7 @@ Open bugs are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.i
 - Each module's state is the single source of truth for its balance. Modules apply their own inflows, growth, and interest in `process_month`
 - The executor sends money out along edges by calling `module.apply_outflow(amount)`, and the target receives exactly what was paid out. Modules with sub-accounts override it (stocks use cash and then sell shares; the 401(k), IRA, and 529 use their withdrawal logic)
 - `node_balances` in snapshots mirrors module balances after outflows
-- Net worth is the sum of module balances, skipping expense nodes: their balance is a running total of money already paid out of other accounts
+- Net worth is the sum of each module's `net_worth_contribution()`, which defaults to its balance. Expense nodes contribute 0: their balance is a running total of money already paid out of other accounts. Real estate adds equity (`current_value - remaining_loan`) to its cash balance while owned; after the sale equity is 0 because the proceeds are already in the balance. `node_balances` still shows only the cash balance
 - `available_for_outflow` is informational capacity, NOT a withdrawal request
 - GraphContext's `setNodes`/`setEdges` do NOT support functional updates (no `prevState =>` pattern)
 - After manual transactions, there are TWO sources of truth: snapshots (historical) and nodeStates (modified)

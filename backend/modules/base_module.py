@@ -187,6 +187,14 @@ class BaseModule(ABC):
         self._state.balance -= amount
         return amount
 
+    def net_worth_contribution(self) -> float:
+        """
+        How much this module adds to net worth. By default that's its balance
+        (debts are negative). Modules whose balance isn't the whole picture
+        (expenses, property equity) override this.
+        """
+        return self._state.balance
+
     def is_active_for_date(self, year: int, month: int) -> bool:
         """
         Check if this module is active for the given year/month.
