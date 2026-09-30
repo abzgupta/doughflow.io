@@ -222,6 +222,8 @@ class SalaryModule(BaseModule):
             state.ytd_medicare += medicare
 
             tax_info.withholding = federal_withholding + state_withholding + fica + medicare
+            tax_info.federal_withholding = federal_withholding
+            tax_info.state_withholding = state_withholding
         else:
             # 1099 income - no withholding
             net_pay = gross - contrib_401k

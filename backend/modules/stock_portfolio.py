@@ -346,7 +346,7 @@ class StockPortfolioModule(BaseModule):
         self._state = state
         return result
 
-    def apply_outflow(self, amount: float) -> float:
+    def apply_outflow(self, amount: float, user_profile: Dict[str, Any] = None) -> float:
         """Pay out from cash first, then sell shares (FIFO) for the rest"""
         state = self._state if isinstance(self._state, StockState) else StockState()
         from_cash = min(amount, max(state.cash_balance, 0))
@@ -358,6 +358,11 @@ class StockPortfolioModule(BaseModule):
             sale = self._sell_shares(state, shortfall)  # proceeds land in cash
             state.cash_balance -= sale['proceeds']
             paid += sale['proceeds']
+            # Realized gains are taxed at year end
+            self._record_realized_tax(
+                capital_gains_short=sale['short_term_gains'],
+                capital_gains_long=sale['long_term_gains'],
+            )
 
         state.balance = state.market_value + state.cash_balance
         self._state = state

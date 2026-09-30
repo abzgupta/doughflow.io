@@ -223,9 +223,11 @@ class FourOhOneKModule(BaseModule):
         self._state = state
         return result
 
-    def apply_outflow(self, amount: float) -> float:
-        # Taxes and penalties on withdrawals aren't applied in the simulation yet (#9)
-        return self.withdraw(amount, {})['gross_withdrawal']
+    def apply_outflow(self, amount: float, user_profile: Dict[str, Any] = None) -> float:
+        # Income tax and any early withdrawal penalty are settled at year end
+        result = self.withdraw(amount, user_profile or {})
+        self._record_realized_tax(taxable_income=result['taxable_income'], penalties=result['penalty'])
+        return result['gross_withdrawal']
 
     def withdraw(self, amount: float, user_profile: Dict[str, Any]) -> Dict[str, Any]:
         """

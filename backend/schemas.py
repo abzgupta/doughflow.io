@@ -37,6 +37,7 @@ class SimulationConfigModel(ApiModel):
     start_year: int = 2024
     start_month: int = 1
     duration_months: int = 120
+    tax_payment_node: Optional[str] = None  # account taxes are paid from/refunded to
 
 
 class GraphRequest(ApiModel):

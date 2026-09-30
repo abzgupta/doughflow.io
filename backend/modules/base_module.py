@@ -40,7 +40,10 @@ class TaxInfo:
     ordinary_dividends: float = 0.0
     deductions: Dict[str, float] = field(default_factory=dict)  # e.g., mortgage interest
     credits: Dict[str, float] = field(default_factory=dict)     # e.g., child tax credit
-    withholding: float = 0.0              # Tax already withheld
+    withholding: float = 0.0              # Tax already withheld (all kinds, incl. FICA)
+    federal_withholding: float = 0.0      # Part of withholding that is federal income tax
+    state_withholding: float = 0.0        # Part of withholding that is state income tax
+    penalties: float = 0.0                # Additional tax, e.g. 10% early withdrawal penalty
 
 
 @dataclass
@@ -175,17 +178,42 @@ class BaseModule(ABC):
         """Set module state (used for loading saved simulations)"""
         self._state = state
 
-    def apply_outflow(self, amount: float) -> float:
+    def apply_outflow(self, amount: float, user_profile: Optional[Dict[str, Any]] = None) -> float:
         """
         Remove money sent out along an edge. Called by the executor after
         process_month, so the module's balance stays the single source of truth.
 
         Returns the amount actually removed, which is what the target receives.
         Modules that hold money in sub-accounts (shares, vested balances)
-        override this.
+        override this. Overrides whose withdrawals are taxable (retirement
+        accounts, share sales) record it with _record_realized_tax.
         """
         self._state.balance -= amount
         return amount
+
+    def apply_inflow(self, amount: float) -> float:
+        """
+        Add money that arrives from outside the graph's edges (e.g. a tax
+        refund). Returns the amount actually added.
+        """
+        self._state.balance += amount
+        return amount
+
+    def _record_realized_tax(self, **amounts: float) -> None:
+        """Add TaxInfo amounts (taxable_income, penalties, ...) realized by an outflow"""
+        pending = getattr(self, '_realized_tax_info', None) or TaxInfo()
+        for name, value in amounts.items():
+            setattr(pending, name, getattr(pending, name) + value)
+        self._realized_tax_info = pending
+
+    def take_realized_tax_info(self) -> Optional[TaxInfo]:
+        """
+        Return and clear the tax info realized by outflows since the last call.
+        The executor collects it after moving money out of the module.
+        """
+        pending = getattr(self, '_realized_tax_info', None)
+        self._realized_tax_info = None
+        return pending
 
     def is_active_for_date(self, year: int, month: int) -> bool:
         """

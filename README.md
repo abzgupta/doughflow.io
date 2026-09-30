@@ -113,7 +113,6 @@ The simulation engine has bugs that affect the numbers. The big ones:
 
 - Graphs with cycles can apply a month's interest and flows more than once
 - Net worth doesn't include property equity
-- Taxes are estimated separately and aren't deducted inside the simulation
 
 These are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.io/issues), and
 fixing them is the most valuable contribution right now.

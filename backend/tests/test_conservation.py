@@ -3,6 +3,12 @@ Money conservation: moving money between nodes must not create or destroy it.
 
 With all growth/interest rates at 0, net worth changes only by income earned
 minus money paid out to expenses.
+
+The simulation settles income taxes at the end of each tax year (including the
+partial final year), which legitimately moves money. These graphs are set up so
+that settlement moves nothing: no state income tax, no early withdrawal
+penalty, income under the standard deduction and no income tax withheld.
+Tax settlement itself is covered in test_taxes.py.
 """
 
 import pytest
@@ -15,6 +21,7 @@ from modules import (
 )
 
 MONTHS = 6
+NO_TAX_PROFILE = {'filing_status': 'single', 'state': 'TX', 'age': 65}
 
 
 def savings(node_id, balance):
@@ -23,6 +30,7 @@ def savings(node_id, balance):
 
 def run(nodes, edges, months=MONTHS):
     executor = GraphExecutor()
+    executor.set_user_profile(NO_TAX_PROFILE)
     for node_id, module in nodes.items():
         executor.add_node(node_id, module)
     for edge in edges:
@@ -91,7 +99,11 @@ def test_debt_payment_leaves_net_worth_unchanged():
 
 
 def test_income_minus_expenses_equals_change_in_net_worth():
-    salary = SalaryModule('salary', {'name': 'salary', 'annual_salary': 60000, 'annual_raise_pct': 0})
+    # $12k of wages over the 6 months stays under the standard deduction
+    salary = SalaryModule('salary', {
+        'name': 'salary', 'annual_salary': 24000, 'annual_raise_pct': 0,
+        'federal_withholding_pct': 0, 'state_withholding_pct': 0,
+    })
     rent = ExpenseModule('rent', {'name': 'rent', 'monthly_amount': 1500, 'annual_increase_pct': 0})
     result = run(
         {'salary': salary, 'checking': savings('checking', 1000), 'rent': rent},
@@ -104,6 +116,7 @@ def test_income_minus_expenses_equals_change_in_net_worth():
     income = sum(f['amount'] for s in result.snapshots for f in s.flows if f['source'] == 'salary')
     spent = sum(f['amount'] for s in result.snapshots for f in s.flows if f['target'] == 'rent')
     assert income > 0 and spent == pytest.approx(1500 * MONTHS)
+    assert result.snapshots[-1].tax_info['annual']['balance_due'] == pytest.approx(0)
     assert result.snapshots[-1].net_worth == pytest.approx(1000 + income - spent)
 
 

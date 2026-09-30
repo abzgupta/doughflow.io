@@ -55,6 +55,7 @@ doughflow_dot_io/
 │   │   ├── graph_executor.py     # Core simulation engine
 │   │   ├── cycle_detector.py     # Handles cycles in graph
 │   │   ├── ledger.py             # Transaction logging system
+│   │   ├── tax_settlement.py     # Yearly income tax totals and settlement
 │   │   └── transactions.py       # Manual transaction handlers
 │   ├── modules/
 │   │   ├── __init__.py
@@ -203,8 +204,40 @@ The simulation runs in `backend/engine/graph_executor.py`:
      - Call `process_month()` on the module
      - Calculate outflows based on edges (fixed/percentage/remainder)
      - Record flows in snapshot
+     - Record the module's `TaxInfo` and any tax realized by its outflows
+   - Add the month's tax info to the running tax year
+   - In December, and in the last simulated month, settle the year's taxes (see below)
    - Log to ledger
 3. **Return** all snapshots with balances, flows, events, net worth
+
+### Tax Settlement
+
+Income taxes are settled once per calendar year by `backend/engine/tax_settlement.py`:
+
+- Every month each module reports a `TaxInfo` (taxable income, deductions, capital
+  gains, dividends, withholding). Money moved out of a traditional 401(k)/IRA records
+  its taxable income and the 10% early withdrawal penalty (age < 59.5 from the user
+  profile); selling shares to fund an outflow records realized gains. 529 outflows are
+  treated as qualified and tax-free
+- Salary income is wages (or self-employment income for 1099). Only federal and state
+  income tax withholding counts toward what's already paid; FICA is not refundable
+- Rental properties report rent net of their expenses (net rental losses aren't
+  deducted in v1). A property with no rent is a primary residence: its mortgage interest
+  and property tax are itemized, and a sale gain gets the $250k/$500k exclusion
+- At the end of December (and of the last simulated month, for a partial year),
+  `FederalTaxCalculator` and `StateTaxCalculator` compute the year's tax using the user
+  profile (filing status, state, dependents for the child tax credit). State income tax
+  and property tax feed the SALT deduction
+- Tax + penalties − withholding is paid from the tax account with `apply_outflow`, or a
+  refund is deposited with `apply_inflow`. The tax account is `config.tax_payment_node`,
+  defaulting to the first savings/checking account. If the account can't cover the bill,
+  the unpaid part is reported in an event; no money is created
+- The settlement month's snapshot gets `tax_info['annual']` and an event such as
+  `2026 taxes: owed $X, withheld $Y, paid $Z from Checking`
+- `/api/simulate/step` runs one month without the rest of the year, so it doesn't settle.
+  `/api/simulate/continue` only sees the months after the resume point for that year
+- Not modeled yet: quarterly estimated payments, loss carryovers, credits other than the
+  child tax credit
 
 ---
 
@@ -331,7 +364,9 @@ Provides:
 Open bugs are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.io/issues).
 
 - Each module's state is the single source of truth for its balance. Modules apply their own inflows, growth, and interest in `process_month`
-- The executor sends money out along edges by calling `module.apply_outflow(amount)`, and the target receives exactly what was paid out. Modules with sub-accounts override it (stocks use cash and then sell shares; the 401(k), IRA, and 529 use their withdrawal logic)
+- The executor sends money out along edges by calling `module.apply_outflow(amount, user_profile)`, and the target receives exactly what was paid out. Modules with sub-accounts override it (stocks use cash and then sell shares; the 401(k), IRA, and 529 use their withdrawal logic). Overrides whose withdrawals are taxable record it with `_record_realized_tax`, which the executor collects with `take_realized_tax_info()`
+- Money from outside the edges (tax refunds) is added with `module.apply_inflow(amount)`
+- Taxes are settled yearly inside the simulation (see [Tax Settlement](#tax-settlement)); `SalaryModule` balances are already net of withholding
 - `node_balances` in snapshots mirrors module balances after outflows
 - Net worth is the sum of module balances, skipping expense nodes: their balance is a running total of money already paid out of other accounts
 - `available_for_outflow` is informational capacity, NOT a withdrawal request
@@ -409,7 +444,8 @@ See the [README](../README.md#quickstart).
 {
   start_year: 2024,
   start_month: 1,        // 1-12
-  duration_months: 60    // Total months to simulate
+  duration_months: 60,   // Total months to simulate
+  tax_payment_node: "checking_1"  // Optional: account taxes are paid from / refunded to
 }
 ```
 
