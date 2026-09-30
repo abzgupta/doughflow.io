@@ -45,7 +45,7 @@ Interactive API docs: http://localhost:5000/docs
 **2. Frontend** (React on port 3000), in a second terminal from the repo root:
 
 ```bash
-npm install
+npm install   # uses package-lock.json
 npm start
 ```
 

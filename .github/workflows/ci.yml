@@ -28,7 +28,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+      - run: npm ci
       # Existing lint warnings shouldn't fail the build (CRA treats them as errors when CI=true)
       - run: npm run build
         env:
