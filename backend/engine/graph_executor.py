@@ -254,6 +254,14 @@ class GraphExecutor:
 
         # Get execution order based on ranks
         nodes_by_rank = self._cycle_detector.get_nodes_by_rank()
+        # The cycle detector only knows nodes that have edges; unconnected
+        # nodes still need to run (interest, growth, rent), so put them first
+        ranked = {n for rank in nodes_by_rank for n in rank}
+        unconnected = [n for n in self.nodes if n not in ranked]
+        if unconnected:
+            if not nodes_by_rank:
+                nodes_by_rank = [[]]
+            nodes_by_rank[0] = unconnected + nodes_by_rank[0]
         cycles = self._cycle_detector.find_all_cycles()
         cycle_node_ids = set()
         for cycle in cycles:
