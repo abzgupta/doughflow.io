@@ -11,7 +11,7 @@ from engine import GraphExecutor
 from engine.graph_executor import FlowEdge, SimulationConfig
 from modules import (
     SavingsAccountModule, StockPortfolioModule, FourOhOneKModule,
-    DebtModule, ExpenseModule, SalaryModule,
+    DebtModule, ExpenseModule, SalaryModule, RealEstateModule,
 )
 
 MONTHS = 6
@@ -114,3 +114,23 @@ def test_unrouted_salary_carries_over():
     balances = [s.node_balances['salary'] for s in result.snapshots]
     assert balances[1] == pytest.approx(2 * balances[0])
     assert balances[2] == pytest.approx(3 * balances[0])
+
+
+def test_buying_property_counts_equity_in_net_worth():
+    rental = RealEstateModule('rental', {
+        'property_name': 'rental',
+        'purchase_price': 200000,
+        'closing_cost': 5000,
+        'loan_obj': {'down_payment_pct': 100, 'interest_rate_pct': 7, 'loan_term': 30},
+        'income_obj': {'monthly_rent': 0, 'annual_rent_increase': 0, 'other_monthly_income': 0,
+                       'vacancy_rate_pct': 0, 'management_fee': 0},
+        'holding_length': 120,
+        'value_appreciation_per_year_pct': 0,
+    })
+    result = run({'checking': savings('checking', 1000), 'rental': rental}, [])
+
+    for snap in result.snapshots:
+        # node_balances still shows the cash side of the property
+        assert snap.node_balances['rental'] == pytest.approx(-205000)
+        # Net worth only loses the closing costs; the rest became equity
+        assert snap.net_worth == pytest.approx(1000 - 5000)
