@@ -307,7 +307,8 @@ def run_simulation(body: SimulateRequest):
         "config": {
             "start_year": 2024,
             "start_month": 1,
-            "duration_months": 120
+            "duration_months": 120,
+            "tax_payment_node": "checking_1"  // optional, default: first savings account
         }
     }
 
@@ -357,7 +358,8 @@ def run_simulation(body: SimulateRequest):
         config = SimulationConfig(
             start_year=config_data.get('start_year', 2024),
             start_month=config_data.get('start_month', 1),
-            duration_months=config_data.get('duration_months', 120)
+            duration_months=config_data.get('duration_months', 120),
+            tax_payment_node=config_data.get('tax_payment_node')
         )
 
         # Run simulation
@@ -679,10 +681,12 @@ def simulate_step(body: StepRequest):
                 node_balances[node_id] = getattr(initial_state, 'balance', 0)
 
         # Execute single month
+        # A single step can't see the rest of the year, so taxes aren't settled
         config = SimulationConfig(
             start_year=current_year,
             start_month=current_month,
-            duration_months=1
+            duration_months=1,
+            settle_taxes=False
         )
         snapshot = executor._execute_month(
             month=current_month,
@@ -939,7 +943,8 @@ def continue_simulation(body: ContinueRequest):
         "config": {
             "start_year": 2024,
             "start_month": 1,
-            "duration_months": 120
+            "duration_months": 120,
+            "tax_payment_node": "checking_1"  // optional, default: first savings account
         },
         "resume_from_month": 25,  // 1-indexed month to resume from
         "node_states": {...}  // Current state at resume point
@@ -978,7 +983,8 @@ def continue_simulation(body: ContinueRequest):
         config = SimulationConfig(
             start_year=config_data.get('start_year', 2024),
             start_month=config_data.get('start_month', 1),
-            duration_months=config_data.get('duration_months', 120)
+            duration_months=config_data.get('duration_months', 120),
+            tax_payment_node=config_data.get('tax_payment_node')
         )
 
         resume_from = data.get('resume_from_month', 1)

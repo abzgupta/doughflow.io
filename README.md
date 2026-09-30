@@ -11,7 +11,7 @@ early, or the daycare bill ends in 2028?
 
 <!-- TODO: add a screenshot of the example graph -->
 
-> **Status: early and experimental.** The engine has known correctness bugs (see
+> **Status: early and experimental.** The engine is a simplified model (see
 > [Known issues](#known-issues)), so treat the numbers as illustrative. Contributions welcome!
 
 ## Features
@@ -109,13 +109,17 @@ pytest
 
 ## Known issues
 
-The simulation engine has bugs that affect the numbers. The big ones:
+The engine's known correctness bugs are fixed, but it is still a simplified model:
 
-- Graphs with cycles can apply a month's interest and flows more than once
-- Taxes are estimated separately and aren't deducted inside the simulation
+- Taxes are settled once a year using simplified federal/state rules, with no quarterly
+  estimated payments; 401(k) contributions sent along an edge aren't treated as pre-tax
+- A property's mortgage and upkeep are paid from the property's own balance, not from
+  your checking account
+- Two edges between the same pair of nodes overwrite each other
+- Market returns are a constant rate; there's no volatility or crash modeling yet
 
-These are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.io/issues), and
-fixing them is the most valuable contribution right now.
+See [GitHub issues](https://github.com/abzgupta/doughflow.io/issues) and the
+[roadmap](docs/ROADMAP.md) for what's planned.
 
 ## Contributing
 

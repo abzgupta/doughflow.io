@@ -5,7 +5,7 @@ Core simulation engine that:
 - Executes financial flow graphs month by month
 - Handles cycle resolution through iterative convergence
 - Tracks money movement between nodes
-- Calculates taxes and net worth
+- Calculates net worth and settles income taxes yearly (see tax_settlement.py)
 """
 
 from typing import Dict, List, Any, Optional, Tuple
@@ -16,6 +16,7 @@ import copy
 
 from .cycle_detector import CycleDetector, Edge, CycleInfo
 from . import ledger
+from .tax_settlement import TaxTracker
 
 
 @dataclass
@@ -39,6 +40,8 @@ class SimulationConfig:
     duration_months: int = 120  # 10 years default
     convergence_threshold: float = 0.01  # For cycle resolution
     max_iterations: int = 100  # Max iterations for cycle convergence
+    tax_payment_node: Optional[str] = None  # Account taxes are paid from; default: first savings account
+    settle_taxes: bool = True  # Settle income taxes each December and in the final month
 
 
 @dataclass
@@ -86,6 +89,7 @@ class GraphExecutor:
         self.edges: List[FlowEdge] = []
         self.user_profile: Dict[str, Any] = {}
         self._cycle_detector = CycleDetector()
+        self._taxes = TaxTracker()
 
     def add_node(self, node_id: str, module: Any) -> None:
         """Add a node (financial module) to the graph"""
@@ -297,6 +301,9 @@ class GraphExecutor:
                         node_id, month, year, node_balances, inflows, outflows, snapshot, inactive_nodes
                     )
 
+        # Add up this month's taxes; settle them at the end of the tax year
+        self._close_tax_month(month, year, month_number, node_balances, snapshot, config)
+
         # Update final balances
         snapshot.node_balances = copy.deepcopy(node_balances)
 
@@ -362,6 +369,7 @@ class GraphExecutor:
             available_for_outflow=available,
             user_profile=self.user_profile
         )
+        self._taxes.record_report(node_id, module, result.tax_info)
 
         # The module's own state is the source of truth for its balance
         new_balance = module.get_state().balance
@@ -396,7 +404,7 @@ class GraphExecutor:
                 flow_amount = self._calculate_flow_amount(edge, remaining, node_balances)
 
             if flow_amount > 0:
-                flow_amount = module.apply_outflow(flow_amount)
+                flow_amount = module.apply_outflow(flow_amount, self.user_profile)
                 inflows[edge.target_id][node_id] = flow_amount
                 outflows[node_id] += flow_amount
                 remaining -= flow_amount
@@ -412,6 +420,9 @@ class GraphExecutor:
                     'amount': flow_amount
                 })
 
+        # Withdrawals and share sales can realize taxable income
+        self._taxes.record_realized(node_id, module)
+
         # Store node state after outflows so it matches node_balances
         snapshot.node_states[node_id] = module.to_dict()
 
@@ -425,6 +436,39 @@ class GraphExecutor:
                 'capital_gains_short': result.tax_info.capital_gains_short,
                 'capital_gains_long': result.tax_info.capital_gains_long,
             }
+
+    def _close_tax_month(
+        self,
+        month: int,
+        year: int,
+        month_number: int,
+        node_balances: Dict[str, float],
+        snapshot: MonthlySnapshot,
+        config: SimulationConfig
+    ) -> None:
+        """Fold the month into the tax year; settle in December and in the final month"""
+        self._taxes.close_month(year)
+        if not config.settle_taxes:
+            return
+        if month != 12 and month_number != config.duration_months:
+            return
+
+        annual, events, paid_node = self._taxes.settle(
+            self.nodes, self.user_profile, config.tax_payment_node
+        )
+        if not annual:
+            return
+        snapshot.tax_info['annual'] = annual
+        snapshot.events.extend(events)
+        if paid_node:
+            node_balances[paid_node] = self.nodes[paid_node].get_state().balance
+            snapshot.node_states[paid_node] = self.nodes[paid_node].to_dict()
+            ledger.log_flow(
+                paid_node if annual['paid'] else 'taxes',
+                'taxes' if annual['paid'] else paid_node,
+                annual['paid'] or annual['refunded'],
+                'tax_settlement'
+            )
 
     def _resolve_cycle_rank(
         self,
@@ -469,6 +513,7 @@ class GraphExecutor:
         saved_balances = {n: node_balances[n] for n in nodes if n in node_balances}
         flows_start = len(snapshot.flows)
         events_start = len(snapshot.events)
+        realized_start = self._taxes.realized_mark()
 
         def run_pass(back_payments, pinned=None, log=False):
             """Restore the saved point, then process every node once"""
@@ -485,6 +530,8 @@ class GraphExecutor:
                     inflows[target][source] = amount
             del snapshot.flows[flows_start:]
             del snapshot.events[events_start:]
+            # Withdrawals in an undone pass didn't happen, so neither did their tax
+            self._taxes.rollback_realized(realized_start)
 
             for n in nodes:
                 self._process_node(
@@ -542,6 +589,7 @@ class GraphExecutor:
 
         # Build cycle detector
         self._build_cycle_detector()
+        self._taxes.reset()
 
         # Initialize all nodes
         start_date = f"{config.start_year}-{config.start_month:02d}"
@@ -588,6 +636,7 @@ class GraphExecutor:
         if result.snapshots:
             final = result.snapshots[-1]
             result.final_net_worth = final.net_worth
+        result.total_taxes = self._taxes.total_taxes
 
         # Log simulation end
         ledger.log_simulation_end(result.final_net_worth, len(result.snapshots))
