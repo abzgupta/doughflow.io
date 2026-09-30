@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm install
       # Existing lint warnings shouldn't fail the build (CRA treats them as errors when CI=true)
       - run: npm run build
         env:
