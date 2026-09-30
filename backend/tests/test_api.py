@@ -73,3 +73,38 @@ def test_legacy_financial_table(client, sample_graph):
                        json={'property_list': [dict(rental, holding_length=24)]})
     assert resp.status_code == 200
     assert len(resp.json()) > 0
+
+
+def _resume_states(snapshot):
+    """Node states in the shape the frontend sends after a transaction"""
+    return {
+        node_id: {'balance': snapshot['node_balances'][node_id], 'state': data.get('state', {})}
+        for node_id, data in snapshot['node_states'].items()
+    }
+
+
+def test_continue_from_saved_state(client, sample_graph):
+    sim = client.post('/api/simulate', json=sample_graph).json()
+    node_states = _resume_states(sim['snapshots'][11])
+
+    resp = client.post('/api/simulate/continue', json={
+        **sample_graph, 'resume_from_month': 13, 'node_states': node_states,
+    })
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body['success'] is True
+    assert len(body['snapshots']) == sample_graph['config']['duration_months'] - 12
+    assert body['snapshots'][0]['month_number'] == 13
+
+
+def test_step_from_saved_state(client, sample_graph):
+    sim = client.post('/api/simulate', json=sample_graph).json()
+    node_states = _resume_states(sim['snapshots'][11])
+
+    resp = client.post('/api/simulate/step', json={
+        'nodes': sample_graph['nodes'], 'edges': sample_graph['edges'],
+        'user_profile': sample_graph['user_profile'], 'node_states': node_states,
+        'current_year': sample_graph['config']['start_year'] + 1, 'current_month': 1, 'month_number': 13,
+    })
+    assert resp.status_code == 200
+    assert resp.json()['success'] is True

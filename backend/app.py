@@ -174,6 +174,30 @@ def create_module_from_type(module_type: str, node_id: str, config: dict) -> Bas
     return cls(node_id, config)
 
 
+def restore_module_state(module: BaseModule, start_date: str, saved: dict) -> float:
+    """
+    Initialize a module, then overlay state saved from an earlier snapshot or
+    transaction. Initializing first sets up attributes modules rely on (e.g.
+    the simulation start year); the saved top-level balance wins because
+    transactions update it.
+    """
+    module.initialize(start_date)
+    saved_state = saved.get('state') or {}
+
+    if hasattr(module, 'restore_state') and saved_state:
+        module.restore_state(saved_state)
+    else:
+        state = module.get_state()
+        for key, value in saved_state.items():
+            if hasattr(state, key):
+                setattr(state, key, value)
+        module.set_state(state)
+
+    state = module.get_state()
+    state.balance = saved.get('balance', state.balance)
+    return state.balance
+
+
 # ============= API Endpoints =============
 
 @app.get('/api/modules')
@@ -648,11 +672,7 @@ def simulate_step(body: StepRequest):
         node_balances = {}
         for node_id, module in executor.nodes.items():
             if node_id in node_states:
-                # Restore state
-                node_balances[node_id] = node_states[node_id].get('balance', 0)
-                state = module.get_state()
-                state.balance = node_balances[node_id]
-                module.set_state(state)
+                node_balances[node_id] = restore_module_state(module, start_date, node_states[node_id])
             else:
                 # Initialize fresh
                 initial_state = module.initialize(start_date)
@@ -977,14 +997,7 @@ def continue_simulation(body: ContinueRequest):
         node_balances = {}
         for node_id, module in executor.nodes.items():
             if node_id in node_states:
-                node_balances[node_id] = node_states[node_id].get('balance', 0)
-                state = module.get_state()
-                state.balance = node_balances[node_id]
-                # Restore additional state
-                for key, value in node_states[node_id].get('state', {}).items():
-                    if hasattr(state, key):
-                        setattr(state, key, value)
-                module.set_state(state)
+                node_balances[node_id] = restore_module_state(module, start_date, node_states[node_id])
             else:
                 initial_state = module.initialize(start_date)
                 node_balances[node_id] = getattr(initial_state, 'balance', 0)
