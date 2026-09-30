@@ -76,6 +76,8 @@ Salary ──► Checking ──► Savings ──► Brokerage
 - **The frontend** (`src/`) is a React Flow editor plus panels for running the simulation,
   stepping through months, and making transactions.
 
+Where it's headed: [docs/ROADMAP.md](docs/ROADMAP.md) (what-if scenarios, events, goals, uncertainty).
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full tour: module interface,
 API endpoints, state management, and known pitfalls.
 
