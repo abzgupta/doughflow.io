@@ -132,58 +132,44 @@ class CycleDetector:
 
         Nodes with no incoming edges have rank 0.
         Other nodes have rank = max(predecessor ranks) + 1.
-        Nodes in cycles are assigned the same rank and processed together.
+        Nodes in cycles are assigned the same rank and processed together:
+        each cycle is collapsed into a single group whose rank is one more than
+        the highest rank feeding into it from outside, so every node paying
+        into the cycle runs before any of its members.
 
         Returns dict mapping node_id to rank.
         """
         all_nodes = set(self.graph.keys()) | set(self.reverse_graph.keys())
-        ranks: Dict[str, int] = {}
 
-        # Find nodes with no incoming edges (sources)
-        in_degree = defaultdict(int)
-        for node in all_nodes:
-            for target in self.graph.get(node, []):
-                in_degree[target] += 1
+        # Collapse each cycle into one group; other nodes are groups of one
+        group_of: Dict[str, str] = {node: node for node in all_nodes}
+        for cycle in self.find_all_cycles():
+            for node in cycle.nodes:
+                group_of[node] = cycle.nodes[0]
 
-        # Initialize sources with rank 0
-        sources = [node for node in all_nodes if in_degree[node] == 0]
-        for source in sources:
-            ranks[source] = 0
+        # Edges between groups form a DAG
+        group_preds: Dict[str, Set[str]] = defaultdict(set)
+        group_succs: Dict[str, Set[str]] = defaultdict(set)
+        for source, targets in self.graph.items():
+            for target in targets:
+                if group_of[source] != group_of[target]:
+                    group_succs[group_of[source]].add(group_of[target])
+                    group_preds[group_of[target]].add(group_of[source])
 
-        # Find cycles to handle specially
-        cycles = self.find_all_cycles()
-        cycle_nodes = set()
-        for cycle in cycles:
-            cycle_nodes.update(cycle.nodes)
-
-        # BFS to assign ranks
-        queue = list(sources)
+        # Longest-path ranking in topological order (Kahn's algorithm)
+        groups = set(group_of.values())
+        waiting_on = {g: len(group_preds[g]) for g in groups}
+        queue = [g for g in groups if waiting_on[g] == 0]
+        group_ranks: Dict[str, int] = {}
         while queue:
-            node = queue.pop(0)
-            current_rank = ranks[node]
+            group = queue.pop(0)
+            group_ranks[group] = max((group_ranks[p] + 1 for p in group_preds[group]), default=0)
+            for successor in group_succs[group]:
+                waiting_on[successor] -= 1
+                if waiting_on[successor] == 0:
+                    queue.append(successor)
 
-            for successor in self.graph.get(node, []):
-                if successor in cycle_nodes and node in cycle_nodes:
-                    # Same cycle - assign same rank
-                    if successor not in ranks:
-                        ranks[successor] = current_rank
-                        queue.append(successor)
-                else:
-                    # Normal case - increment rank
-                    new_rank = current_rank + 1
-                    if successor not in ranks or ranks[successor] < new_rank:
-                        ranks[successor] = new_rank
-                        if successor not in queue:
-                            queue.append(successor)
-
-        # Handle any remaining unranked nodes (in cycles with no external inputs)
-        for node in all_nodes:
-            if node not in ranks:
-                # Find minimum rank of predecessors, or use 0
-                pred_ranks = [ranks.get(p, 0) for p in self.reverse_graph.get(node, [])]
-                ranks[node] = max(pred_ranks) + 1 if pred_ranks else 0
-
-        return ranks
+        return {node: group_ranks[group_of[node]] for node in all_nodes}
 
     def get_nodes_by_rank(self) -> List[List[str]]:
         """
