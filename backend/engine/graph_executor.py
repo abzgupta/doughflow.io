@@ -323,9 +323,17 @@ class GraphExecutor:
         inflows: Dict[str, Dict[str, float]],
         outflows: Dict[str, float],
         snapshot: MonthlySnapshot,
-        inactive_nodes: List[str] = None
+        inactive_nodes: List[str] = None,
+        pinned_flows: Optional[Dict[Tuple[str, str], float]] = None,
+        log: bool = True
     ) -> None:
-        """Process a single node for one month"""
+        """
+        Process a single node for one month.
+
+        pinned_flows maps (source, target) to an amount the target has already
+        received; those edges pay exactly that amount (used by cycle resolution).
+        log=False skips the ledger, for trial passes that will be rolled back.
+        """
         if inactive_nodes is None:
             inactive_nodes = []
 
@@ -360,13 +368,14 @@ class GraphExecutor:
         node_balances[node_id] = new_balance
 
         # Log node processing
-        ledger.log_node_processing(
-            node_id=node_id,
-            inflows=active_inflows,
-            available=available,
-            result_balance=new_balance,
-            events=result.events
-        )
+        if log:
+            ledger.log_node_processing(
+                node_id=node_id,
+                inflows=active_inflows,
+                available=available,
+                result_balance=new_balance,
+                events=result.events
+            )
 
         # Add events
         snapshot.events.extend(result.events)
@@ -375,12 +384,17 @@ class GraphExecutor:
         # receives exactly what the module paid out
         remaining = new_balance
         for edge in outgoing:
-            if not self._should_execute_edge(edge, month, year):
-                continue
-            if not self._check_condition(edge, node_balances):
-                continue
+            pin_key = (node_id, edge.target_id)
+            if pinned_flows is not None and pin_key in pinned_flows:
+                # The target was already credited with this amount
+                flow_amount = pinned_flows[pin_key]
+            else:
+                if not self._should_execute_edge(edge, month, year):
+                    continue
+                if not self._check_condition(edge, node_balances):
+                    continue
+                flow_amount = self._calculate_flow_amount(edge, remaining, node_balances)
 
-            flow_amount = self._calculate_flow_amount(edge, remaining, node_balances)
             if flow_amount > 0:
                 flow_amount = module.apply_outflow(flow_amount)
                 inflows[edge.target_id][node_id] = flow_amount
@@ -389,7 +403,8 @@ class GraphExecutor:
                 node_balances[node_id] = module.get_state().balance
 
                 # Log the flow
-                ledger.log_flow(node_id, edge.target_id, flow_amount, edge.flow_type)
+                if log:
+                    ledger.log_flow(node_id, edge.target_id, flow_amount, edge.flow_type)
 
                 snapshot.flows.append({
                     'source': node_id,
@@ -423,31 +438,85 @@ class GraphExecutor:
         config: SimulationConfig,
         inactive_nodes: List[str] = None
     ) -> None:
-        """Resolve cycles through iterative convergence"""
+        """
+        Resolve cycles through iterative convergence.
+
+        Nodes are processed in order, so a payment to a node earlier in the
+        order (a back edge) arrives after that node has already run. Each trial
+        pass therefore feeds back edges the amounts paid on the previous pass.
+        Every pass starts from the same saved point (module states, balances,
+        inflows/outflows and snapshot entries), so the month's interest, growth
+        and flows are applied only once no matter how many passes it takes.
+
+        Once back-edge payments stop changing, a final pass runs with them pinned
+        to the amounts their targets received, so money is conserved exactly.
+        If they never settle (e.g. remainder edges both ways), the final pass
+        drops the back edges for this month instead.
+        """
         if inactive_nodes is None:
             inactive_nodes = []
 
-        prev_balances = {n: node_balances.get(n, 0) for n in rank_nodes}
+        nodes = [n for n in rank_nodes if n in self.nodes]
+        position = {n: i for i, n in enumerate(nodes)}
+        back_edges = {
+            (e.source_id, e.target_id) for e in self.edges
+            if e.source_id in position and e.target_id in position
+            and position[e.target_id] <= position[e.source_id]
+        }
 
-        for iteration in range(config.max_iterations):
-            # Process all nodes in the cycle
-            for node_id in rank_nodes:
-                if node_id in self.nodes:
-                    self._process_node(
-                        node_id, month, year, node_balances, inflows, outflows, snapshot, inactive_nodes
-                    )
+        # Everything a pass changes, so each pass can start from the same point
+        saved_states = {n: copy.deepcopy(self.nodes[n]._state) for n in nodes}
+        saved_balances = {n: node_balances[n] for n in nodes if n in node_balances}
+        flows_start = len(snapshot.flows)
+        events_start = len(snapshot.events)
 
-            # Check convergence
-            max_diff = 0.0
-            for node_id in rank_nodes:
-                diff = abs(node_balances.get(node_id, 0) - prev_balances.get(node_id, 0))
-                max_diff = max(max_diff, diff)
-                prev_balances[node_id] = node_balances.get(node_id, 0)
+        def run_pass(back_payments, pinned=None, log=False):
+            """Restore the saved point, then process every node once"""
+            for n in nodes:
+                self.nodes[n]._state = copy.deepcopy(saved_states[n])
+                if n in saved_balances:
+                    node_balances[n] = saved_balances[n]
+                outflows.pop(n, None)
+            for sources in inflows.values():
+                for n in nodes:
+                    sources.pop(n, None)
+            for (source, target), amount in back_payments.items():
+                if amount > 0:
+                    inflows[target][source] = amount
+            del snapshot.flows[flows_start:]
+            del snapshot.events[events_start:]
 
+            for n in nodes:
+                self._process_node(
+                    n, month, year, node_balances, inflows, outflows, snapshot, inactive_nodes,
+                    pinned_flows=pinned, log=log
+                )
+
+            return {
+                (f['source'], f['target']): f['amount'] for f in snapshot.flows[flows_start:]
+                if (f['source'], f['target']) in back_edges
+            }
+
+        back_payments: Dict[Tuple[str, str], float] = {}
+        converged = False
+        for _ in range(config.max_iterations):
+            paid = run_pass(back_payments)
+            max_diff = max(
+                (abs(paid.get(k, 0.0) - back_payments.get(k, 0.0)) for k in back_edges),
+                default=0.0
+            )
+            back_payments = paid
             if max_diff < config.convergence_threshold:
+                converged = True
                 break
 
-        if iteration >= config.max_iterations - 1:
+        # Final pass: back edges pay exactly what their targets were credited
+        if not converged:
+            back_payments = {}
+        pinned = {k: back_payments.get(k, 0.0) for k in back_edges}
+        run_pass(pinned, pinned=pinned, log=True)
+
+        if not converged:
             snapshot.events.append(f"Cycle convergence warning: max iterations reached")
 
     def simulate(self, config: Optional[SimulationConfig] = None) -> SimulationResult:
