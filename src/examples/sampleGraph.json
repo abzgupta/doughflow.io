@@ -3,7 +3,10 @@
     {
       "id": "salary_1",
       "type": "customNode",
-      "position": { "x": 50, "y": 300 },
+      "position": {
+        "x": 50,
+        "y": 300
+      },
       "data": {
         "moduleType": "salary",
         "config": {
@@ -24,7 +27,10 @@
     {
       "id": "401k_1",
       "type": "customNode",
-      "position": { "x": 350, "y": 50 },
+      "position": {
+        "x": 350,
+        "y": 50
+      },
       "data": {
         "moduleType": "four_oh_one_k",
         "config": {
@@ -43,7 +49,10 @@
     {
       "id": "checking_1",
       "type": "customNode",
-      "position": { "x": 350, "y": 300 },
+      "position": {
+        "x": 350,
+        "y": 300
+      },
       "data": {
         "moduleType": "savings_account",
         "config": {
@@ -62,7 +71,10 @@
     {
       "id": "savings_1",
       "type": "customNode",
-      "position": { "x": 650, "y": 200 },
+      "position": {
+        "x": 650,
+        "y": 200
+      },
       "data": {
         "moduleType": "savings_account",
         "config": {
@@ -81,7 +93,10 @@
     {
       "id": "stocks_1",
       "type": "customNode",
-      "position": { "x": 650, "y": 350 },
+      "position": {
+        "x": 650,
+        "y": 350
+      },
       "data": {
         "moduleType": "stock_portfolio",
         "config": {
@@ -101,7 +116,10 @@
     {
       "id": "rental_1",
       "type": "customNode",
-      "position": { "x": 50, "y": 500 },
+      "position": {
+        "x": 50,
+        "y": 500
+      },
       "data": {
         "moduleType": "real_estate",
         "config": {
@@ -134,7 +152,10 @@
     {
       "id": "primary_home_1",
       "type": "customNode",
-      "position": { "x": 650, "y": 50 },
+      "position": {
+        "x": 650,
+        "y": 50
+      },
       "data": {
         "moduleType": "real_estate",
         "config": {
@@ -167,7 +188,10 @@
     {
       "id": "student_loan_1",
       "type": "customNode",
-      "position": { "x": 650, "y": 500 },
+      "position": {
+        "x": 650,
+        "y": 500
+      },
       "data": {
         "moduleType": "debt",
         "config": {
@@ -187,7 +211,10 @@
     {
       "id": "car_loan_1",
       "type": "customNode",
-      "position": { "x": 350, "y": 500 },
+      "position": {
+        "x": 350,
+        "y": 500
+      },
       "data": {
         "moduleType": "debt",
         "config": {
@@ -200,9 +227,9 @@
           "loan_term_months": 60,
           "is_tax_deductible": false,
           "extra_payment": 0,
-          "start_year": 2024,
+          "start_year": 2026,
           "start_month": 1,
-          "end_year": 2027,
+          "end_year": 2029,
           "end_month": 6
         },
         "label": "Car Loan"
@@ -211,7 +238,10 @@
     {
       "id": "daycare_1",
       "type": "customNode",
-      "position": { "x": 650, "y": 650 },
+      "position": {
+        "x": 650,
+        "y": 650
+      },
       "data": {
         "moduleType": "expense",
         "config": {
@@ -224,9 +254,9 @@
           "active_months": [],
           "is_tax_deductible": true,
           "tax_deduction_type": "childcare_credit",
-          "start_year": 2024,
+          "start_year": 2026,
           "start_month": 1,
-          "end_year": 2026,
+          "end_year": 2028,
           "end_month": 8
         },
         "label": "Daycare"
@@ -235,7 +265,10 @@
     {
       "id": "summer_camp_1",
       "type": "customNode",
-      "position": { "x": 350, "y": 650 },
+      "position": {
+        "x": 350,
+        "y": 650
+      },
       "data": {
         "moduleType": "expense",
         "config": {
@@ -245,12 +278,16 @@
           "monthly_amount": 2500,
           "annual_amount": 0,
           "annual_increase_pct": 3,
-          "active_months": [6, 7, 8],
+          "active_months": [
+            6,
+            7,
+            8
+          ],
           "is_tax_deductible": true,
           "tax_deduction_type": "childcare_credit",
-          "start_year": 2024,
+          "start_year": 2026,
           "start_month": 6,
-          "end_year": 2027,
+          "end_year": 2029,
           "end_month": 8
         },
         "label": "Summer Camp"
@@ -259,7 +296,10 @@
     {
       "id": "utilities_1",
       "type": "customNode",
-      "position": { "x": 50, "y": 650 },
+      "position": {
+        "x": 50,
+        "y": 650
+      },
       "data": {
         "moduleType": "expense",
         "config": {
@@ -419,9 +459,8 @@
     "dependents": 2
   },
   "simulationConfig": {
-    "start_year": 2024,
+    "start_year": 2026,
     "start_month": 1,
     "duration_months": 60
-  },
-  "savedAt": "2026-02-02T00:00:00.000Z"
+  }
 }

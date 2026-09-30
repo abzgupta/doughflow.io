@@ -68,6 +68,10 @@ export function useGraphState() {
         throw new Error(response.data.error || 'Simulation failed');
       }
     } catch (err) {
+      if (err.request && !err.response) {
+        setError(`Can't reach the backend at ${API_BASE}. Is it running? See the README.`);
+        return null;
+      }
       setError(err.response?.data?.error || err.message);
       return null;
     } finally {

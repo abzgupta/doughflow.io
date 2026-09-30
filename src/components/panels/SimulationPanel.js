@@ -94,8 +94,9 @@ function SimulationPanel() {
     const snapshot = result.snapshots[currentMonth - 1];
     if (!snapshot) return;
 
-    // Create a stable identifier for this result (use length as proxy)
-    const resultId = result.snapshots.length;
+    // Each simulation response is a new object, so its reference identifies the run
+    // (snapshot count alone can't tell two runs of the same length apart)
+    const resultId = result;
 
     // Skip if we've already processed this exact state
     if (lastProcessedRef.current.month === currentMonth &&

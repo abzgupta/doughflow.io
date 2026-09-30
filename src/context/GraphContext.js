@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import sampleGraph from '../examples/sampleGraph.json';
 
-// Initial state
-const initialState = {
+// Blank canvas (used by "New Graph")
+const emptyState = {
   nodes: [],
   edges: [],
   userProfile: {
@@ -12,7 +13,7 @@ const initialState = {
     dependents: 0,
   },
   simulationConfig: {
-    start_year: 2024,
+    start_year: new Date().getFullYear(),
     start_month: 1,
     duration_months: 120,
   },
@@ -21,6 +22,15 @@ const initialState = {
   selectedNode: null,
   selectedEdge: null,
   isDirty: false,
+};
+
+// Start with the example graph so first-time visitors see a working simulation
+const initialState = {
+  ...emptyState,
+  nodes: sampleGraph.nodes,
+  edges: sampleGraph.edges,
+  userProfile: sampleGraph.userProfile,
+  simulationConfig: sampleGraph.simulationConfig,
 };
 
 // Action types
@@ -164,7 +174,7 @@ function graphReducer(state, action) {
 
     case ActionTypes.CLEAR_GRAPH:
       return {
-        ...initialState,
+        ...emptyState,
       };
 
     case ActionTypes.SET_DIRTY:

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Layout, Menu, Button, Space, Dropdown, Modal, Upload, message, Typography } from 'antd';
 import {
   NodeIndexOutlined,
@@ -6,6 +6,7 @@ import {
   FolderOpenOutlined,
   FileAddOutlined,
   UploadOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 
 import { GraphProvider } from './context/GraphContext';
@@ -15,6 +16,7 @@ import TaxSummaryPanel from './components/panels/TaxSummaryPanel';
 import UserProfilePanel from './components/panels/UserProfilePanel';
 import { useGraphState } from './hooks/useGraphState';
 import { useGraph } from './context/GraphContext';
+import sampleGraph from './examples/sampleGraph.json';
 
 // Legacy imports for real estate mode
 import LegacyApp from './LegacyApp';
@@ -28,10 +30,30 @@ const { Title, Text } = Typography;
 // Main app content (needs to be inside GraphProvider)
 function AppContent() {
   const graph = useGraph();
-  const { saveGraph, loadGraphFromFile } = useGraphState();
+  const { saveGraph, loadGraphFromFile, runSimulation } = useGraphState();
 
   const [rightPanel, setRightPanel] = useState('simulation'); // 'simulation' | 'tax' | 'profile'
   const [loadModalOpen, setLoadModalOpen] = useState(false);
+
+  // Bumping runToken runs the simulation once after the next render, so it
+  // sees freshly loaded nodes. The ref keeps StrictMode from running it twice.
+  const [runToken, setRunToken] = useState(1); // 1 = run the example on first load
+  const lastRunTokenRef = useRef(0);
+
+  useEffect(() => {
+    if (lastRunTokenRef.current === runToken) return;
+    lastRunTokenRef.current = runToken;
+    runSimulation().then((result) => {
+      if (!result) {
+        message.error("Couldn't run the simulation. Is the backend running? See the README.");
+      }
+    });
+  }, [runToken, runSimulation]);
+
+  const loadExample = () => {
+    graph.loadGraph(sampleGraph);
+    setRunToken((t) => t + 1);
+  };
 
   // Handle save - triggers file download
   const handleSave = () => {
@@ -66,6 +88,22 @@ function AppContent() {
           });
         } else {
           graph.clearGraph();
+        }
+      },
+    },
+    {
+      key: 'example',
+      icon: <ExperimentOutlined />,
+      label: 'Load Example',
+      onClick: () => {
+        if (graph.isDirty) {
+          Modal.confirm({
+            title: 'Unsaved Changes',
+            content: 'You have unsaved changes. Replace them with the example graph?',
+            onOk: loadExample,
+          });
+        } else {
+          loadExample();
         }
       },
     },
