@@ -1,17 +1,27 @@
 """
 DoughFlow API Server
 
-Flask application providing endpoints for:
+FastAPI application providing endpoints for:
 - Financial flow simulation
 - Graph validation
 - Tax calculations
 - Legacy rental property calculations
+
+Run locally:
+    uvicorn app:app --reload --port 5000
+Interactive API docs are served at /docs.
 """
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS, cross_origin
-import numpy as np
 import json
+import logging
+import os
+import traceback
+from typing import Any
+
+import numpy as np
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Import modules
 from modules import (
@@ -30,11 +40,48 @@ from engine.graph_executor import FlowEdge, SimulationConfig
 # Import tax
 from tax import FederalTaxCalculator, FilingStatus, DeductionCalculator, StateTaxCalculator
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'doughflow-financial-simulator-2024'
-app.config['CORS_HEADERS'] = 'Content-Type'
+from schemas import (
+    GraphRequest, SimulateRequest, StepRequest, ContinueRequest,
+    TransactionRequest, TaxCalculateRequest, TaxImpactRequest, PropertyListRequest
+)
 
-cors = CORS(app, resources={r"/*": {"origins": "*"}})
+logger = logging.getLogger('doughflow')
+
+
+def _json_default(obj: Any) -> Any:
+    """Serialize numpy scalars/arrays that leak out of module calculations"""
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+class ApiJSONResponse(JSONResponse):
+    """
+    JSON response that allows Infinity/NaN (e.g. paying off debt with
+    amount="full") instead of raising, matching the original Flask API.
+    """
+
+    def render(self, content: Any) -> bytes:
+        return json.dumps(content, default=_json_default, allow_nan=True).encode('utf-8')
+
+
+app = FastAPI(
+    title='DoughFlow API',
+    description='Month-by-month financial flow simulation',
+    version='2.0.0',
+    default_response_class=ApiJSONResponse,
+)
+
+# Comma-separated list of allowed origins, e.g. "http://localhost:3000,https://example.com"
+cors_origins = os.environ.get('DOUGHFLOW_CORS_ORIGINS', 'http://localhost:3000').split(',')
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in cors_origins if o.strip()],
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
 
 
 # ============= Module Registry =============
@@ -129,16 +176,14 @@ def create_module_from_type(module_type: str, node_id: str, config: dict) -> Bas
 
 # ============= API Endpoints =============
 
-@app.route('/api/modules', methods=['GET'])
-@cross_origin()
+@app.get('/api/modules')
 def list_modules():
     """List available module types and their configuration schemas"""
-    return jsonify(get_module_registry())
+    return get_module_registry()
 
 
-@app.route('/api/graph/validate', methods=['POST'])
-@cross_origin()
-def validate_graph():
+@app.post('/api/graph/validate')
+def validate_graph(body: GraphRequest):
     """
     Validate a financial flow graph.
 
@@ -161,7 +206,7 @@ def validate_graph():
         "cycles": [...]
     }
     """
-    data = request.json
+    data = body.model_dump()
     errors = []
     warnings = []
     cycles = []
@@ -212,17 +257,16 @@ def validate_graph():
     except Exception as e:
         errors.append(f"Validation error: {str(e)}")
 
-    return jsonify({
+    return {
         'valid': len(errors) == 0,
         'errors': errors,
         'warnings': warnings,
         'cycles': cycles
-    })
+    }
 
 
-@app.route('/api/simulate', methods=['POST'])
-@cross_origin()
-def run_simulation():
+@app.post('/api/simulate')
+def run_simulation(body: SimulateRequest):
     """
     Run financial flow simulation.
 
@@ -252,7 +296,7 @@ def run_simulation():
         "errors": []
     }
     """
-    data = request.json
+    data = body.model_dump()
 
     # Clear ledger at start of new simulation
     ledger.clear_ledger()
@@ -320,7 +364,7 @@ def run_simulation():
                 'inactive_nodes': snap.inactive_nodes
             })
 
-        return jsonify({
+        return {
             'success': True,
             'snapshots': snapshots,
             'annual_summaries': result.annual_summaries,
@@ -328,20 +372,18 @@ def run_simulation():
             'total_income': result.total_income,
             'total_expenses': result.total_expenses,
             'errors': result.errors
-        })
+        }
 
     except Exception as e:
-        import traceback
+        logger.exception("Request failed")
         ledger.log_error(str(e), {'traceback': traceback.format_exc()})
-        return jsonify({
+        return ApiJSONResponse({
             'success': False,
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 400
+            'error': str(e)
+        }, status_code=400)
 
 
-@app.route('/api/ledger/clear', methods=['POST'])
-@cross_origin()
+@app.post('/api/ledger/clear')
 def clear_ledger():
     """
     Clear the transaction ledger log file.
@@ -349,20 +391,19 @@ def clear_ledger():
     """
     try:
         ledger.clear_ledger()
-        return jsonify({
+        return {
             'success': True,
             'message': 'Ledger cleared successfully'
-        })
+        }
     except Exception as e:
-        return jsonify({
+        return ApiJSONResponse({
             'success': False,
             'error': str(e)
-        }), 400
+        }, status_code=400)
 
 
-@app.route('/api/tax/calculate', methods=['POST'])
-@cross_origin()
-def calculate_tax():
+@app.post('/api/tax/calculate')
+def calculate_tax(body: TaxCalculateRequest):
     """
     Calculate federal and state taxes.
 
@@ -390,7 +431,7 @@ def calculate_tax():
         "estimated_payments": 0
     }
     """
-    data = request.json
+    data = body.model_dump()
 
     try:
         # Get user profile
@@ -423,7 +464,7 @@ def calculate_tax():
         state_calc = StateTaxCalculator(state, filing_status_str)
         state_result = state_calc.calculate(federal_result.adjusted_gross_income)
 
-        return jsonify({
+        return {
             'federal': {
                 'gross_income': federal_result.gross_income,
                 'adjusted_gross_income': federal_result.adjusted_gross_income,
@@ -449,19 +490,17 @@ def calculate_tax():
             },
             'total_tax': federal_result.total_tax + state_result.tax_liability,
             'total_effective_rate': (federal_result.total_tax + state_result.tax_liability) / federal_result.gross_income if federal_result.gross_income > 0 else 0
-        })
+        }
 
     except Exception as e:
-        import traceback
-        return jsonify({
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 400
+        logger.exception("Request failed")
+        return ApiJSONResponse({
+            'error': str(e)
+        }, status_code=400)
 
 
-@app.route('/api/tax/impact', methods=['POST'])
-@cross_origin()
-def calculate_tax_impact():
+@app.post('/api/tax/impact')
+def calculate_tax_impact(body: TaxImpactRequest):
     """
     Calculate the tax impact of a financial decision.
 
@@ -474,7 +513,7 @@ def calculate_tax_impact():
         }
     }
     """
-    data = request.json
+    data = body.model_dump()
 
     try:
         base = data.get('base_scenario', {})
@@ -531,28 +570,26 @@ def calculate_tax_impact():
 
         tax_savings = base_result.total_tax - modified_result.total_tax
 
-        return jsonify({
+        return {
             'base_tax': base_result.total_tax,
             'modified_tax': modified_result.total_tax,
             'tax_savings': tax_savings,
             'effective_rate_change': base_result.effective_rate - modified_result.effective_rate,
             'marginal_rate': base_result.marginal_rate,
             'note': f"${amount:,.2f} {change_type} saves ${tax_savings:,.2f} in taxes"
-        })
+        }
 
     except Exception as e:
-        import traceback
-        return jsonify({
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 400
+        logger.exception("Request failed")
+        return ApiJSONResponse({
+            'error': str(e)
+        }, status_code=400)
 
 
 # ============= Interactive Simulation Endpoints =============
 
-@app.route('/api/simulate/step', methods=['POST'])
-@cross_origin()
-def simulate_step():
+@app.post('/api/simulate/step')
+def simulate_step(body: StepRequest):
     """
     Run a single month of simulation.
     Used for interactive step-by-step simulation.
@@ -569,7 +606,7 @@ def simulate_step():
     """
     from engine.transactions import TransactionResult
 
-    data = request.json
+    data = body.model_dump()
 
     try:
         executor = GraphExecutor()
@@ -635,7 +672,7 @@ def simulate_step():
             config=config
         )
 
-        return jsonify({
+        return {
             'success': True,
             'snapshot': {
                 'year': snapshot.year,
@@ -654,20 +691,18 @@ def simulate_step():
                 }
                 for node_id, module in executor.nodes.items()
             }
-        })
+        }
 
     except Exception as e:
-        import traceback
-        return jsonify({
+        logger.exception("Request failed")
+        return ApiJSONResponse({
             'success': False,
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 400
+            'error': str(e)
+        }, status_code=400)
 
 
-@app.route('/api/transaction', methods=['POST'])
-@cross_origin()
-def execute_transaction():
+@app.post('/api/transaction')
+def execute_transaction(body: TransactionRequest):
     """
     Execute a manual transaction during interactive simulation.
 
@@ -699,7 +734,7 @@ def execute_transaction():
         calculate_tax_on_gains, TransactionResult
     )
 
-    data = request.json
+    data = body.model_dump()
 
     try:
         transaction_type = data.get('transaction_type')
@@ -755,7 +790,7 @@ def execute_transaction():
             destination_node = params.get('destination_node')
 
             if source_node not in modules:
-                return jsonify({'success': False, 'error': f"Node {source_node} not found"}), 400
+                return ApiJSONResponse({'success': False, 'error': f"Node {source_node} not found"}, status_code=400)
 
             # DEBUG: Print module state before sell
             stock_module = modules[source_node]
@@ -807,7 +842,7 @@ def execute_transaction():
                 amount = float('inf')
 
             if target_node not in modules:
-                return jsonify({'success': False, 'error': f"Debt node {target_node} not found"}), 400
+                return ApiJSONResponse({'success': False, 'error': f"Debt node {target_node} not found"}, status_code=400)
 
             source_module = modules.get(source_node) if source_node else None
             result = execute_pay_debt(
@@ -822,7 +857,7 @@ def execute_transaction():
             amount = params.get('amount', 0)
 
             if source_node not in modules or target_node not in modules:
-                return jsonify({'success': False, 'error': "Source or target node not found"}), 400
+                return ApiJSONResponse({'success': False, 'error': "Source or target node not found"}, status_code=400)
 
             result = execute_transfer(
                 modules[source_node],
@@ -853,27 +888,25 @@ def execute_transaction():
             month=month
         )
 
-        return jsonify({
+        return {
             'success': result.success,
             'message': result.message,
             'updated_balances': result.updated_balances,
             'tax_implications': result.tax_implications,
             'events': result.events,
             'node_states': updated_states
-        })
+        }
 
     except Exception as e:
-        import traceback
-        return jsonify({
+        logger.exception("Request failed")
+        return ApiJSONResponse({
             'success': False,
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 400
+            'error': str(e)
+        }, status_code=400)
 
 
-@app.route('/api/simulate/continue', methods=['POST'])
-@cross_origin()
-def continue_simulation():
+@app.post('/api/simulate/continue')
+def continue_simulation(body: ContinueRequest):
     """
     Continue simulation from a specific month with modified state.
     Used after executing manual transactions.
@@ -892,7 +925,7 @@ def continue_simulation():
         "node_states": {...}  // Current state at resume point
     }
     """
-    data = request.json
+    data = body.model_dump()
 
     try:
         executor = GraphExecutor()
@@ -988,59 +1021,53 @@ def continue_simulation():
 
         final_net_worth = snapshots[-1]['net_worth'] if snapshots else 0
 
-        return jsonify({
+        return {
             'success': True,
             'snapshots': snapshots,
             'final_net_worth': final_net_worth,
             'resumed_from_month': resume_from
-        })
+        }
 
     except Exception as e:
-        import traceback
-        return jsonify({
+        logger.exception("Request failed")
+        return ApiJSONResponse({
             'success': False,
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 400
+            'error': str(e)
+        }, status_code=400)
 
 
 # ============= Legacy Endpoint =============
 
-@app.route('/get_financial_table_summarized', methods=['POST', 'OPTIONS'])
-@cross_origin()
-def get_financial_table_summarized_endpoint():
+@app.post('/get_financial_table_summarized')
+def get_financial_table_summarized_endpoint(body: PropertyListRequest):
     """Legacy endpoint for rental property calculations"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'message': 'OK'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response, 200
-
-    property_list = request.json.get('property_list', [])
+    property_list = body.property_list
 
     try:
         rental_df = get_financial_table_summarized(property_list)
         rental_df = rental_df.replace([np.inf, -np.inf], np.finfo(np.float64).max)
         response = rental_df.to_dict(orient='records')
-        return jsonify(response)
+        # Returned directly so numpy scalars go through _json_default
+        return ApiJSONResponse(response)
     except Exception as e:
-        import traceback
-        return jsonify({
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }), 400
+        logger.exception("Legacy financial table failed")
+        return ApiJSONResponse({
+            "error": str(e)
+        }, status_code=400)
 
 
 # ============= Health Check =============
 
-@app.route('/health', methods=['GET'])
+@app.get('/health')
 def health_check():
     """Health check endpoint"""
-    return jsonify({
+    return {
         'status': 'healthy',
         'version': '2.0.0',
         'modules_available': list(get_module_registry().keys())
-    })
+    }
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    import uvicorn
+    uvicorn.run('app:app', reload=True, port=5000)

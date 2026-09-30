@@ -20,6 +20,9 @@ import {
   Table,
 } from "antd";
 import CountUp from "react-countup";
+
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 const formatter = (prevValue, currentValue) => (
   <CountUp start={prevValue} end={currentValue} delay={0} separator="," />
 );
@@ -65,7 +68,7 @@ const LegacyApp = () => {
 
   useEffect(() => {
     if (properties.length > 0) {
-      callFlaskApi();
+      callApi();
     }
   }, [properties]);
 
@@ -166,11 +169,11 @@ const LegacyApp = () => {
     setIsModalVisible(false);
   };
 
-  const callFlaskApi = async () => {
+  const callApi = async () => {
     try {
       console.log(properties);
       const response = await axios.post(
-        "https://abzgupta.pythonanywhere.com/get_financial_table_summarized",
+        `${API_BASE}/get_financial_table_summarized`,
         {
           property_list: properties,
         },

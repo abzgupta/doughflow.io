@@ -1,19 +1,12 @@
-#!/usr/bin/env python3
 """
-Test script for DoughFlow financial simulation engine.
+Smoke tests for the DoughFlow financial simulation engine.
 
-This script tests:
+These exercise:
 1. Module creation and initialization
 2. Graph executor with connected nodes
 3. Tax calculations
 4. Full simulation run
 """
-
-import sys
-import os
-
-# Add backend to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from modules import (
     SalaryModule, SavingsAccountModule, StockPortfolioModule,
@@ -82,7 +75,6 @@ def test_modules():
     print(f"\nStock Portfolio: Value = ${result.new_state.market_value:,.2f}")
 
     print("\n[OK] All modules created and processed successfully")
-    return True
 
 
 def test_graph_executor():
@@ -188,7 +180,6 @@ def test_graph_executor():
             print(f"  {node_id}: ${balance:,.2f}")
 
     print("\n[OK] Graph executor test passed")
-    return True
 
 
 def test_tax_calculator():
@@ -235,7 +226,6 @@ def test_tax_calculator():
     print(f"\nDeduction type: {result.breakdown.get('deduction_type', 'standard')}")
 
     print("\n[OK] Tax calculator test passed")
-    return True
 
 
 def test_real_estate_parity():
@@ -304,58 +294,3 @@ def test_real_estate_parity():
     print(f"  Cumulative Cash: ${month_60['cumulative_cash_for_property']:,.2f}")
 
     print("\n[OK] Real estate parity test passed")
-    return True
-
-
-def main():
-    """Run all tests"""
-    print("\n" + "=" * 60)
-    print("DoughFlow Financial Simulator - Test Suite")
-    print("=" * 60)
-
-    all_passed = True
-
-    try:
-        all_passed &= test_modules()
-    except Exception as e:
-        print(f"\n[FAIL] Module test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        all_passed = False
-
-    try:
-        all_passed &= test_graph_executor()
-    except Exception as e:
-        print(f"\n[FAIL] Graph executor test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        all_passed = False
-
-    try:
-        all_passed &= test_tax_calculator()
-    except Exception as e:
-        print(f"\n[FAIL] Tax calculator test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        all_passed = False
-
-    try:
-        all_passed &= test_real_estate_parity()
-    except Exception as e:
-        print(f"\n[FAIL] Real estate parity test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        all_passed = False
-
-    print("\n" + "=" * 60)
-    if all_passed:
-        print("All tests PASSED!")
-    else:
-        print("Some tests FAILED!")
-    print("=" * 60)
-
-    return 0 if all_passed else 1
-
-
-if __name__ == '__main__':
-    sys.exit(main())
