@@ -112,10 +112,8 @@ pytest
 The simulation engine has bugs that affect the numbers. The big ones:
 
 - Money moved between accounts can be double-counted, which inflates net worth
-- A rental property "sells" again every month after its holding period ends
-- Nodes with no connections are never simulated
-- Real estate ignores the vacancy rate and double-counts the management fee;
-  net worth doesn't include property equity
+- Graphs with cycles can apply a month's interest and flows more than once
+- Net worth doesn't include property equity
 - Taxes are estimated separately and aren't deducted inside the simulation
 
 These are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.io/issues), and
