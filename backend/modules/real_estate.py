@@ -217,6 +217,13 @@ class RealEstateModule(BaseModule):
     ) -> FlowResult:
         """Process one month of real estate ownership"""
         state = self._state if isinstance(self._state, RealEstateState) else RealEstateState()
+
+        # Once sold, the property has no more income, costs, or sale proceeds
+        if state.is_sold:
+            result = FlowResult()
+            result.new_state = state
+            return result
+
         state.months_owned += 1
         current_month = state.months_owned
 
@@ -232,7 +239,8 @@ class RealEstateModule(BaseModule):
         management_fee = 0.0
 
         if not is_no_rent:
-            rent_income = self._get_monthly_rent(current_month)
+            vacancy_pct = self.config['income_obj'].get('vacancy_rate_pct', 0) / 100.0
+            rent_income = self._get_monthly_rent(current_month) * (1 - vacancy_pct)
             management_fee_pct = self.config['income_obj']['management_fee'] / 100.0
             management_fee = rent_income * management_fee_pct
             rent_income -= management_fee
@@ -242,15 +250,16 @@ class RealEstateModule(BaseModule):
         interest, principal = self._get_interest_principal(current_month, state.remaining_loan)
         state.remaining_loan = max(0, state.remaining_loan - principal)
 
-        # Calculate monthly expenses (only at start of each year)
+        # Calculate monthly expenses (annual costs spread evenly across the year)
         expenses = self._get_monthly_expenses(current_month)
 
         # Update property value
         state.current_value = self._get_property_value(current_month)
 
         # Calculate cash flow for this month
+        # (rent_income is already net of the management fee)
         total_income = rent_income + other_income
-        total_expenses = expenses + interest + principal + management_fee
+        total_expenses = expenses + interest + principal
         cash_flow = total_income - total_expenses
 
         # Update cumulative values
@@ -427,14 +436,11 @@ class RealEstateModule(BaseModule):
         return base_amount * ((1 + increase_pct) ** years)
 
     def _get_monthly_expenses(self, month: int) -> float:
-        """Calculate total monthly expenses (annual expenses paid monthly at year start)"""
-        if month % 12 != 1:
-            return 0.0
-
+        """Calculate total monthly expenses (one twelfth of each annual expense)"""
         expenses = 0.0
         for exp_type in ['annual_property_tax', 'annual_total_insurance', 'annual_hoa',
                          'annual_maintenance', 'annual_other_costs']:
-            expenses += self._get_annual_expense(exp_type, month)
+            expenses += self._get_annual_expense(exp_type, month) / 12
 
         return expenses
 
