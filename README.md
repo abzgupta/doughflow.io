@@ -1,64 +1,133 @@
-# DoughFlow.io - Rental Investment Income Simulator
+# DoughFlow
 
-DoughFlow.io is a powerful tool designed to help you run simulations and analyze potential rental investment income. With this application, you can gain valuable insights into the financial performance of your rental properties and make informed investment decisions.
+**Model your finances as a flow of money, and simulate it month by month.**
 
-## Disclaimer
+DoughFlow lets you draw your financial life as a graph: income, accounts, investments,
+property, debts and expenses are nodes, and the money moving between them is edges
+("send $1,900 a month from salary to the 401(k)", "whatever's left in checking goes to
+the brokerage"). The simulator then steps through the months and shows balances, flows,
+and net worth, so you can ask *what if*: what if I buy a rental, pay off the car
+early, or the daycare bill ends in 2028?
 
-Please note that DoughFlow.io is intended for informational and educational purposes only. The simulations and analyses provided by the application should not be considered as financial advice. Always consult with a qualified financial advisor before making any investment decisions. Use DoughFlow.io at your own risk and exercise caution when interpreting the results. The developers and maintainers of DoughFlow.io are not responsible for any financial decisions or outcomes based on the use of this application.
+<!-- TODO: add a screenshot of the example graph -->
 
+> **Status: early and experimental.** The engine has known correctness bugs (see
+> [Known issues](#known-issues)), so treat the numbers as illustrative. Contributions welcome!
 
 ## Features
 
-- Simulate rental income based on various parameters
-- Analyze cash flow, expenses, and return on investment
-- Compare multiple investment scenarios
-- Visualize financial data through interactive charts and graphs
-- User-friendly interface for easy navigation and input
+- Drag-and-drop graph editor (React Flow) with 10 building blocks: salary, savings/checking,
+  stocks, 401(k), IRA, 529, real estate, mortgage, debt, and expenses
+- Money flows as fixed amounts, percentages, or "whatever remains", monthly/quarterly/annually,
+  with priorities and conditions (e.g. only when a balance is over $10k)
+- Start/end dates on any node (a loan that ends, childcare that stops)
+- Step through the simulation month by month, and pause to make manual moves (sell stocks,
+  pay off a debt, transfer money), then continue
+- Federal and state tax estimates
+- Save/load graphs as JSON; an example graph loads and runs when you open the app
 
-## Getting Started
+## Quickstart
 
-To run DoughFlow.io locally on your machine, follow these steps:
+You need **Python 3.10+** and **Node.js 18+**.
 
-### Prerequisites
+**1. Backend** (FastAPI on port 5000):
 
-- Node.js (version X.X.X or higher)
-- npm (version X.X.X or higher)
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app:app --reload --port 5000
+```
 
-### Installation
+Interactive API docs: http://localhost:5000/docs
 
-1. Clone the repository:
-git clone https://github.com/abzgupta/doughflow.io.git
+**2. Frontend** (React on port 3000), in a second terminal from the repo root:
 
-2. Navigate to the project directory:
-cd doughflow.io
-
-3. Install the dependencies:
+```bash
 npm install
-
-### Running the Application
-
-1. Start the development server:
 npm start
+```
 
-2. Open your web browser and visit `http://localhost:3000` to access DoughFlow.io.
+Open http://localhost:3000. The example graph loads and simulates automatically.
+Use **File → New Graph** to start from scratch, or **File → Load Example** to get it back.
+
+### Configuration
+
+| Variable | Where | Default | Purpose |
+|---|---|---|---|
+| `REACT_APP_API_URL` | frontend | `http://localhost:5000` | Backend URL |
+| `DOUGHFLOW_CORS_ORIGINS` | backend | `http://localhost:3000` | Comma-separated origins allowed to call the API |
+
+## How it works
+
+```
+Salary ──► Checking ──► Savings ──► Brokerage
+              │
+              ├──► Mortgage
+              └──► Student loan
+```
+
+- **Nodes** are financial modules (`backend/modules/`). Each one implements `BaseModule`:
+  it keeps its own state and processes one month at a time (interest, growth, amortization…).
+- **Edges** move money between nodes each month, in priority order.
+- **The engine** (`backend/engine/graph_executor.py`) runs nodes in dependency order,
+  resolves cycles by iterating to convergence, and records a snapshot per month.
+- **The frontend** (`src/`) is a React Flow editor plus panels for running the simulation,
+  stepping through months, and making transactions.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full tour: module interface,
+API endpoints, state management, and known pitfalls.
+
+## Project layout
+
+```
+backend/
+  app.py            FastAPI app and routes
+  schemas.py        Request models
+  engine/           Simulation engine, cycle detection, transactions, ledger
+  modules/          One file per financial building block
+  tax/              Federal/state tax and deduction calculators
+  tests/            pytest suite
+src/
+  components/       Flow canvas, nodes, forms, panels
+  context/          Graph state (React context + reducer)
+  hooks/            API calls, save/load
+  examples/         The example graph
+docs/               Architecture notes
+```
+
+## Running tests
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest
+```
+
+## Known issues
+
+The simulation engine has bugs that affect the numbers. The big ones:
+
+- Money moved between accounts can be double-counted, which inflates net worth
+- A rental property "sells" again every month after its holding period ends
+- Nodes with no connections are never simulated
+- Real estate ignores the vacancy rate and double-counts the management fee;
+  net worth doesn't include property equity
+- Taxes are estimated separately and aren't deducted inside the simulation
+
+These are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.io/issues), and
+fixing them is the most valuable contribution right now.
 
 ## Contributing
 
-We welcome contributions to enhance DoughFlow.io! If you'd like to contribute, please follow these steps:
+Bug reports, fixes, and new modules are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-1. Fork the repository.
-2. Create a new branch for your feature or bug fix.
-3. Make your changes and commit them with descriptive messages.
-4. Push your changes to your forked repository.
-5. Submit a pull request detailing your changes.
+## Disclaimer
+
+DoughFlow is for informational and educational purposes only and is not financial,
+tax, or investment advice. Consult a qualified professional before making financial decisions.
 
 ## License
 
-DoughFlow.io is open-source software licensed under the [MIT License](LICENSE).
-
-## Contact
-
-If you have any questions, suggestions, or feedback, please feel free to reach out to us at info@doughflow.io or visit our website at [http://doughflow.io](http://doughflow.io).
-
-
-
+[MIT](LICENSE)

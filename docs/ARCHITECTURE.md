@@ -1,7 +1,7 @@
-# DoughFlow.io - Claude Handoff Document
+# DoughFlow Architecture
 
-**Last Updated:** 2026-02-03 (Session 2 - Added Lessons Learned)
-**Purpose:** Detailed technical context for Claude Code sessions
+Technical reference for contributors: how the simulation engine, module
+system, API, and frontend fit together. For setup, see the [README](../README.md).
 
 ---
 
@@ -35,7 +35,7 @@ Salary → Checking → Savings → Stocks
 - **Context API** (`GraphContext`) for state management
 
 ### Backend
-- **Flask** (Python) REST API
+- **FastAPI** (Python) REST API, served by uvicorn (interactive docs at `/docs`)
 - **NumPy/Pandas** for calculations
 - Custom module system for financial entities
 
@@ -46,7 +46,9 @@ Salary → Checking → Savings → Stocks
 ```
 doughflow_dot_io/
 ├── backend/
-│   ├── app.py                    # Flask routes & API endpoints
+│   ├── app.py                    # FastAPI routes & API endpoints
+│   ├── schemas.py                # Pydantic request models
+│   ├── tests/                    # pytest suite
 │   ├── ledger.log                # Transaction ledger (debug log)
 │   ├── engine/
 │   │   ├── __init__.py
@@ -85,19 +87,19 @@ doughflow_dot_io/
 │       │   ├── FlowCanvas.js     # ReactFlow canvas wrapper
 │       │   └── FlowToolbar.js    # Node palette for adding nodes
 │       ├── nodes/
-│       │   └── CustomNode.js     # Universal node component
+│       │   └── BaseNode.js       # Universal node component
 │       ├── forms/
-│       │   ├── NodeConfigForm.js # Dynamic form based on module schema
-│       │   └── EdgeConfigForm.js # Edge configuration form
+│       │   ├── NodeConfigDrawer.js # Dynamic form based on module schema
+│       │   └── EdgeConfigModal.js  # Edge configuration form
 │       └── panels/
 │           ├── SimulationPanel.js    # Simulation controls & results
 │           ├── TransactionModal.js   # Manual transaction UI
-│           ├── UserProfilePanel.js   # Tax profile settings
-│           └── ConfigPanel.js        # Simulation config
+│           ├── TaxSummaryPanel.js    # Tax summary
+│           └── UserProfilePanel.js   # Tax profile settings
 │
-├── test-graph.json               # Sample graph for testing
+├── src/examples/sampleGraph.json # Example graph loaded on startup
 ├── package.json
-└── README.md                     # Original (outdated) readme
+└── README.md
 ```
 
 ---
@@ -324,23 +326,10 @@ Provides:
 
 ---
 
-## Known Issues / Recent Fixes
+## Architecture Notes
 
-### Fixed (2026-02-03 Session 2):
-4. **Numbers "spasming" in UI** - `useEffect` in SimulationPanel had `graph.nodes` in dependency array while also calling `graph.setNodes()`, causing infinite render loop. Fixed by using `useRef` to track processed state and removing `graph.nodes` from deps.
+Open bugs are tracked in [GitHub issues](https://github.com/abzgupta/doughflow.io/issues).
 
-5. **Paid-off debt nodes becoming active again when stepping** - After paying off debt via transaction, stepping through simulation would reset `isInactive` based on old snapshot data. Fixed by checking `hasModifications` and using modified `nodeStates` values instead of snapshot.
-
-6. **Debt edges not graying out after payoff** - Node's `isInactive` wasn't being set on transaction payoff. Fixed by adding logic in `handleExecuteTransaction` to mark debt nodes as inactive when balance reaches $0.
-
-### Fixed (2026-02-03 Session 1):
-1. **Brokerage showing "Current: 0"** - `stock_portfolio.py` was incorrectly treating `available_for_outflow` as a withdrawal request, draining the entire balance. Fixed by removing automatic withdrawal logic.
-
-2. **Summer camp node always visible** - `FlowCanvas.js` sync effect only checked node ID changes, not `isInactive` changes. Fixed by checking data property changes.
-
-3. **Transaction sell_shares wrong signature** - `transactions.py` was passing wrong parameters to `sell_shares()`. Fixed.
-
-### Architecture Notes:
 - Modules handle their OWN internal state (inflows, growth, interest)
 - The executor handles OUTFLOWS via edges (subtracts from node_balances)
 - `available_for_outflow` is informational capacity, NOT a withdrawal request
@@ -349,38 +338,28 @@ Provides:
 
 ---
 
-## Test Data
+## Example Graph
 
-`test-graph.json` contains a sample financial scenario:
+`src/examples/sampleGraph.json` is loaded (and simulated) when the app starts, and
+via **File → Load Example**. It is also the fixture for the backend API tests. It contains:
 - $120k salary
 - 401(k) with employer match
 - Checking and emergency fund accounts
 - Brokerage account ($25k stocks + $2k cash)
 - Primary residence and rental property
 - Student loan, car loan
-- Daycare (ends Aug 2026), summer camp (Jun-Aug seasonal)
+- Daycare (ends Aug 2028), summer camp (Jun-Aug seasonal)
 - Utilities
 
 ---
 
 ## Running the Application
 
-### Backend:
-```bash
-cd backend
-python app.py
-# Runs on http://localhost:5000
-```
+See the [README](../README.md#quickstart).
 
-### Frontend:
-```bash
-npm start
-# Runs on http://localhost:3000
-```
-
-### Debug:
+### Debugging:
 - Check `backend/ledger.log` for transaction history
-- Backend prints debug info to console when simulating
+- Backend prints debug info to the uvicorn console when simulating
 - React DevTools for frontend state
 
 ---
@@ -451,9 +430,9 @@ Downloaded as `doughflow-YYYY-MM-DD.json`
 
 ---
 
-## Tips for Future Sessions
+## Development Tips
 
-1. **Always restart backend** after Python changes
+1. **Run uvicorn with `--reload`** so Python changes are picked up
 2. **Check ledger.log** for debugging simulation issues
 3. **Module state vs node_balances**: Modules track internal state, executor tracks balances for flows
 4. **Inactive nodes**: Check `is_active_for_date()` and `snapshot.inactive_nodes`
@@ -462,13 +441,13 @@ Downloaded as `doughflow-YYYY-MM-DD.json`
 
 ---
 
-## Mistakes Made & Lessons Learned (2026-02-03)
+## Frontend Pitfalls
 
-This section documents mistakes made during development and how they were resolved. **Read this before making changes to avoid repeating these errors.**
+Bugs that have bitten this codebase before and how they were fixed. **Read this before changing `GraphContext` or `SimulationPanel`.**
 
-### Mistake 1: Using Functional Updates with GraphContext's setNodes
+### Pitfall 1: Using Functional Updates with GraphContext's setNodes
 
-**What I Did Wrong:**
+**The wrong way:**
 Tried to use React's functional update pattern with `graph.setNodes`:
 ```javascript
 // WRONG - GraphContext doesn't support functional updates!
@@ -478,7 +457,7 @@ graph.setNodes(prevNodes => {
 });
 ```
 
-**What Happened:**
+**Symptom:**
 `graph.nodes.forEach is not a function` runtime error. The context's `setNodes` passes the argument directly to the reducer as `payload`, so it set `nodes` to the function itself instead of calling it.
 
 **The Fix:**
@@ -489,13 +468,13 @@ const updatedNodes = graph.nodes.map(node => { ... });
 graph.setNodes(updatedNodes);
 ```
 
-**Lesson:** The `GraphContext` uses `useReducer`, not `useState`. Its action creators (`setNodes`, `setEdges`, etc.) dispatch actions with the payload directly. They do NOT support functional updates like `useState`'s setter does. Always read state first, transform it, then pass the new value.
+**Takeaway:** The `GraphContext` uses `useReducer`, not `useState`. Its action creators (`setNodes`, `setEdges`, etc.) dispatch actions with the payload directly. They do NOT support functional updates like `useState`'s setter does. Always read state first, transform it, then pass the new value.
 
 ---
 
-### Mistake 2: Including graph.nodes in useEffect Dependency Array That Calls setNodes
+### Pitfall 2: Including graph.nodes in useEffect Dependency Array That Calls setNodes
 
-**What I Did Wrong:**
+**The wrong way:**
 ```javascript
 React.useEffect(() => {
   // ... update nodes based on simulation snapshot
@@ -504,7 +483,7 @@ React.useEffect(() => {
 }, [currentMonth, result, graph.nodes, graph.setNodes]);  // graph.nodes in deps!
 ```
 
-**What Happened:**
+**Symptom:**
 The UI numbers were "spasming" - rapidly flickering between values. This was an infinite render loop:
 1. Effect runs → calls `setNodes()`
 2. `graph.nodes` changes
@@ -532,16 +511,16 @@ React.useEffect(() => {
 }, [currentMonth, result]);  // No graph.nodes!
 ```
 
-**Lesson:** If a `useEffect` both reads AND writes to the same state (like `graph.nodes`), you'll create an infinite loop if that state is in the dependency array. Use a ref to track processed state and exclude the state from deps. Add `eslint-disable-next-line` comment to acknowledge intentional omission.
+**Takeaway:** If a `useEffect` both reads AND writes to the same state (like `graph.nodes`), you'll create an infinite loop if that state is in the dependency array. Use a ref to track processed state and exclude the state from deps. Add `eslint-disable-next-line` comment to acknowledge intentional omission.
 
 ---
 
-### Mistake 3: Snapshot Data Overwriting Transaction-Modified State
+### Pitfall 3: Snapshot Data Overwriting Transaction-Modified State
 
-**What I Did Wrong:**
+**The wrong way:**
 After a manual transaction (e.g., paying off student loan), the node was correctly marked `isInactive: true`. But when stepping through the simulation, the useEffect would set `isInactive` based on `snapshot.inactive_nodes`, which doesn't know about manual transactions.
 
-**What Happened:**
+**Symptom:**
 User pays off debt → node shows "Ended" and grays out → user steps forward one month → node becomes active again (ungrayed) because the old snapshot said it wasn't inactive.
 
 **The Fix:**
@@ -562,19 +541,19 @@ const isPaidOffDebt = isDebtType && Math.abs(newBalance) < 0.01;
 const isInactive = inactiveNodesFromSnapshot.includes(node.id) || isPaidOffDebt;
 ```
 
-**Lesson:** When supporting interactive modifications (transactions), you have TWO sources of truth: the original simulation snapshots and the modified `nodeStates`. Always check `hasModifications` and prefer the modified state. Simulation snapshots are historical and don't reflect user changes.
+**Takeaway:** When supporting interactive modifications (transactions), you have TWO sources of truth: the original simulation snapshots and the modified `nodeStates`. Always check `hasModifications` and prefer the modified state. Simulation snapshots are historical and don't reflect user changes.
 
 ---
 
-### Mistake 4: Not Updating Edge Styles When Nodes Become Inactive
+### Pitfall 4: Not Updating Edge Styles When Nodes Become Inactive
 
-**What I Did Wrong:**
+**The wrong way:**
 Initially only updated node appearance when a debt was paid off, forgetting that connected edges also need to be grayed out.
 
 **The Fix:**
 FlowCanvas already had logic for this at lines 122-158, but it needed the node's `isInactive` status to be set correctly. Once the node status was correct, edges updated automatically.
 
-**Lesson:** The edge styling in `FlowCanvas.js` automatically updates based on `node.data.isInactive`. If edges aren't graying out, the problem is likely that the node's `isInactive` isn't being set correctly - fix the node state, not the edge logic.
+**Takeaway:** The edge styling in `FlowCanvas.js` automatically updates based on `node.data.isInactive`. If edges aren't graying out, the problem is likely that the node's `isInactive` isn't being set correctly - fix the node state, not the edge logic.
 
 ---
 
@@ -585,9 +564,3 @@ FlowCanvas already had logic for this at lines 122-158, but it needed the node's
 3. **Don't forget there are two data sources after transactions** - Snapshots vs nodeStates
 4. **Don't try to fix edge styling directly** - Fix the node's isInactive status instead
 5. **Don't overwrite modified state with old snapshot data** - Check `hasModifications` first
-
----
-
-## Contact
-
-Owner: abzgupta
