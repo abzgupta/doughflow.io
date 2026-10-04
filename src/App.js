@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Layout, Menu, Button, Space, Dropdown, Modal, Upload, message, Typography, Alert } from 'antd';
 import {
-  NodeIndexOutlined,
   SaveOutlined,
   FolderOpenOutlined,
   FileAddOutlined,
@@ -138,7 +137,7 @@ function AppContent() {
         }}
       >
         <Space>
-          <NodeIndexOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+          <img src={`${process.env.PUBLIC_URL}/favicon.svg`} alt="" width={28} height={28} style={{ display: 'block' }} />
           <Title level={4} style={{ margin: 0 }}>
             DoughFlow
           </Title>

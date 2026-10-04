@@ -1,3 +1,5 @@
+<img src="public/favicon.svg" alt="DoughFlow logo" width="72">
+
 # DoughFlow
 
 **Model your finances as a flow of money, and simulate it month by month.**
