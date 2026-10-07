@@ -7,9 +7,11 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   MarkerType,
+  Panel,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { message } from 'antd';
+import { Button, Tooltip, message } from 'antd';
+import { ApartmentOutlined } from '@ant-design/icons';
 
 import { nodeTypes } from '../nodes';
 import FlowToolbar from './FlowToolbar';
@@ -17,6 +19,7 @@ import EdgeConfigModal from '../forms/EdgeConfigModal';
 import NodeConfigDrawer from '../forms/NodeConfigDrawer';
 import { useGraph } from '../../context/GraphContext';
 import { useGraphState } from '../../hooks/useGraphState';
+import { autoLayout } from '../../utils/autoLayout';
 
 // Edge styles based on flow type
 const getEdgeStyle = (flowType, isInactive = false) => {
@@ -321,6 +324,14 @@ function FlowCanvas() {
     [setEdges]
   );
 
+  // Line nodes up in columns by depth: sources on the left, each child one
+  // column to the right of its deepest parent
+  const handleAutoArrange = useCallback(() => {
+    setNodes((nds) => autoLayout(nds, edges));
+    // Let React Flow apply the new positions before re-fitting the view
+    requestAnimationFrame(() => reactFlowInstance?.fitView({ padding: 0.15, duration: 300 }));
+  }, [edges, setNodes, reactFlowInstance]);
+
   return (
     <div style={{ display: 'flex', height: '100%' }}>
       <FlowToolbar onAddNode={handleAddNodeFromToolbar} />
@@ -347,6 +358,13 @@ function FlowCanvas() {
         >
           <Background variant="dots" gap={15} size={1} />
           <Controls />
+          <Panel position="top-right">
+            <Tooltip title="Line nodes up in columns: each node one column right of its deepest parent">
+              <Button icon={<ApartmentOutlined rotate={-90} />} onClick={handleAutoArrange}>
+                Auto-arrange
+              </Button>
+            </Tooltip>
+          </Panel>
           <MiniMap
             nodeColor={(node) => {
               // Show inactive nodes in gray

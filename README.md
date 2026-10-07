@@ -11,7 +11,7 @@ the brokerage"). The simulator then steps through the months and shows balances,
 and net worth, so you can ask *what if*: what if I buy a rental, pay off the car
 early, or the daycare bill ends in 2028?
 
-<!-- TODO: add a screenshot of the example graph -->
+![DoughFlow: the example plan auto-arranged into columns, with five-year simulation results in the side panel](docs/screenshot.png)
 
 > **Status: early and experimental.** The engine is a simplified model (see
 > [Known issues](#known-issues)), so treat the numbers as illustrative. Contributions welcome!
@@ -27,6 +27,7 @@ early, or the daycare bill ends in 2028?
   pay off a debt, transfer money), then continue
 - Federal and state tax estimates
 - Save/load graphs as JSON; an example graph loads and runs when you open the app
+- Auto-arrange lines nodes up in columns by depth, so money visibly flows left to right
 
 ## Quickstart
 
